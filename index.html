@@ -7,12 +7,12 @@
     <style>
         /* --- RETRODEV 98 DESIGN SYSTEM --- */
         :root {
-            --rd-teal: #008080;
+            --rd-teal: #c2185b;
             --rd-gray: #c0c0c0;
             --rd-white: #ffffff;
             --rd-dark: #808080;
             --rd-black: #000000;
-            --rd-blue: #000080;
+            --rd-blue: #99004d;
             --rd-text-gray: #808080;
             --font-main: "MS Sans Serif", Tahoma, Verdana, sans-serif;
             --font-fixed: "Courier New", Courier, monospace;
@@ -66,7 +66,7 @@
         #app-window.mobile-view { width: 375px; height: 667px; max-height: 90vh; border: 4px solid #333; }
         #app-window.minimized { transform: translateY(120vh) scale(0.1); opacity: 0; pointer-events: none; }
 
-        .title-bar { background: linear-gradient(90deg, var(--rd-blue), #1084d0); height: 22px; display: flex; align-items: center; padding: 0 2px; color: white; font-weight: bold; user-select: none; touch-action: none; }
+        .title-bar { background: linear-gradient(90deg, var(--rd-blue), #ff5fa2); height: 22px; display: flex; align-items: center; padding: 0 2px; color: white; font-weight: bold; user-select: none; touch-action: none; }
         .title-bar-text { flex-grow: 1; padding-left: 2px; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .title-controls { display: flex; gap: 2px; padding-right: 1px; flex-shrink: 0; }
 
@@ -102,7 +102,7 @@
         .tree-text { font-family: var(--font-main); margin-left: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tree-folder-toggle { cursor: pointer; margin-right: 4px; font-weight: bold; min-width: 16px; text-align: center; user-select: none; touch-action: manipulation; }
         .tree-children { padding-left: 16px; }
-        .tree-dragover { background-color: #d0e0ff !important; outline: 2px dashed var(--rd-blue); }
+        .tree-dragover { background-color: #ffd6ea !important; outline: 2px dashed var(--rd-blue); }
 
         .editor-container { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; background: var(--rd-gray); }
         .tabs-strip { display: flex; align-items: flex-end; padding-left: 2px; height: 28px; background: var(--rd-gray); border-bottom: 1px solid var(--rd-white); z-index: 2; overflow-x: auto; scrollbar-width: none; }
@@ -1074,19 +1074,58 @@ if __name__ == "__main__":
 
         // --- DRAG AND DROP ---
         let draggedItemId = null;
+        let pendingDragOutUrl = null;
+
+        function getFileMimeType(name) {
+            const ext = (name.split('.').pop() || '').toLowerCase();
+            const map = {
+                py: 'text/x-python',
+                html: 'text/html',
+                htm: 'text/html',
+                css: 'text/css',
+                js: 'text/javascript',
+                json: 'application/json',
+                md: 'text/markdown',
+                csv: 'text/csv',
+                xml: 'application/xml',
+                txt: 'text/plain'
+            };
+            return map[ext] || 'text/plain';
+        }
 
         function makeDraggable(div, item) {
             div.draggable = true;
             div.addEventListener('dragstart', (e) => {
                 draggedItemId = item.id;
-                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.effectAllowed = 'copyMove';
                 e.dataTransfer.setData('text/plain', item.id);
+
+                if (item.type === 'file') {
+                    // Native drag-out-to-desktop: Chromium browsers read the DownloadURL
+                    // entry and save the file to whatever folder the user drops it on
+                    // (File Explorer, Finder, the desktop). Firefox and Safari ignore
+                    // this entry, and touch devices never fire native drag events at all,
+                    // so this path only activates on a desktop Chromium browser with a mouse.
+                    const mime = getFileMimeType(item.name);
+                    const blob = new Blob([item.content || ''], { type: mime });
+                    pendingDragOutUrl = URL.createObjectURL(blob);
+                    e.dataTransfer.setData('DownloadURL', `${mime}:${item.name}:${pendingDragOutUrl}`);
+                }
+
                 div.style.opacity = '0.5';
             });
             div.addEventListener('dragend', (e) => {
                 div.style.opacity = '1';
                 draggedItemId = null;
                 document.querySelectorAll('.tree-line').forEach(el => el.classList.remove('tree-dragover'));
+                if (pendingDragOutUrl) {
+                    const urlToRevoke = pendingDragOutUrl;
+                    pendingDragOutUrl = null;
+                    // The browser reads the blob URL synchronously once the OS drop
+                    // completes, but revoking it inside dragend can race that read on
+                    // slower drives, so free the memory a few seconds later instead.
+                    setTimeout(() => URL.revokeObjectURL(urlToRevoke), 5000);
+                }
             });
             div.addEventListener('dragover', (e) => {
                 e.preventDefault();
@@ -1127,6 +1166,33 @@ if __name__ == "__main__":
                 playClick();
             });
         }
+
+        // Dropping on the empty space below the last tree item moves that item
+        // back to the root level, closing the one gap the per-item handlers left.
+        treeEl.addEventListener('dragover', (e) => {
+            if (e.target === treeEl) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                treeEl.classList.add('tree-dragover');
+            }
+        });
+        treeEl.addEventListener('dragleave', (e) => {
+            if (e.target === treeEl) treeEl.classList.remove('tree-dragover');
+        });
+        treeEl.addEventListener('drop', (e) => {
+            if (e.target !== treeEl) return;
+            e.preventDefault();
+            treeEl.classList.remove('tree-dragover');
+            const sourceId = e.dataTransfer.getData('text/plain');
+            if (!sourceId) return;
+            const source = appData.files.find(f => f.id === sourceId);
+            if (!source || source.parent === null) return;
+            source.parent = null;
+            renderTree();
+            saveData(true);
+            statusEl.textContent = `Moved "${source.name}" to root.`;
+            playClick();
+        });
 
         // --- INIT ---
         function init() {
@@ -1767,11 +1833,12 @@ if __name__ == "__main__":
         function exportFile() {
             const item = appData.files.find(f => f.id === appData.activeId);
             if (!item || item.type !== 'file') return;
-            const b = new Blob([item.content], {type: 'text/plain'});
+            const b = new Blob([item.content], {type: getFileMimeType(item.name)});
             const a = document.createElement('a');
             a.href = URL.createObjectURL(b);
             a.download = item.name;
             a.click();
+            URL.revokeObjectURL(a.href);
             statusEl.textContent = "Exported " + item.name;
             playClick();
         }
