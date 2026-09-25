@@ -46,6 +46,8 @@
             flex-direction: column;
             touch-action: manipulation;
             padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         #desktop {
@@ -105,11 +107,14 @@
         .sidebar { width: 180px; background: var(--rd-white); display: flex; flex-direction: column; overflow-y: auto; min-width: 120px; position: relative; flex-shrink: 0; }
         .sidebar-header { background: var(--rd-gray); padding: 3px 6px; border-bottom: 1px solid var(--rd-dark); font-weight: bold; position: sticky; top: 0; z-index: 5; }
         
-        .tree-container { padding: 4px; white-space: pre; font-family: var(--font-fixed); font-size: 11px; flex-grow: 1; overflow-y: auto; min-height: 100%; position: relative; -webkit-overflow-scrolling: touch; }
-        .tree-line { display: flex; align-items: center; min-height: 24px; cursor: pointer; user-select: none; padding: 2px 4px; border-radius: 2px; }
+        .tree-container { padding: 4px; white-space: pre; font-family: var(--font-fixed); font-size: 11px; flex-grow: 1; overflow-y: auto; min-height: 100%; position: relative; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+        .tree-line { display: flex; align-items: center; min-height: 24px; cursor: pointer; user-select: none; padding: 2px 4px; border-radius: 2px; transition: background 0.15s, box-shadow 0.15s; }
         .tree-line:hover { background-color: #f0f0f0; }
         .tree-line.active { background-color: var(--rd-pink); color: white; }
         .tree-line.rd-name-match { box-shadow: inset 3px 0 0 0 #ff8000; }
+        .tree-line.dragging { opacity: 0.5; }
+        .tree-line.touch-dragging { opacity: 0.7; box-shadow: 0 0 0 2px var(--rd-pink), 0 4px 12px rgba(0,0,0,0.4); background: #fff0f7; transform: scale(1.02); z-index: 100; position: relative; }
+        .tree-line.touch-drag-ghost { position: fixed; pointer-events: none; background: var(--rd-pink); color: white; padding: 6px 12px; border-radius: 4px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.4); z-index: 99999; font-size: 12px; display: flex; align-items: center; gap: 6px; opacity: 0.95; }
         .tree-text { font-family: var(--font-main); margin-left: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tree-folder-toggle { cursor: pointer; margin-right: 4px; font-weight: bold; min-width: 16px; text-align: center; user-select: none; touch-action: manipulation; }
         .tree-dragover { background-color: #ffd9ec !important; outline: 2px dashed var(--rd-pink); }
@@ -181,6 +186,36 @@
         .btn-action { padding: 8px 16px; background: var(--rd-gray); border: 1px solid var(--rd-white); border-right: 1px solid var(--rd-black); border-bottom: 1px solid var(--rd-black); text-align: center; min-width: 75px; cursor: pointer; touch-action: manipulation; }
         .btn-action:active { border: 1px solid var(--rd-black); border-right-color: var(--rd-white); border-bottom-color: var(--rd-white); }
 
+        /* --- HOLD-TO-DRAG PROGRESS INDICATOR --- */
+        .hold-progress {
+            position: fixed;
+            pointer-events: none;
+            z-index: 99998;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 3px solid rgba(255,255,255,0.5);
+            background: rgba(0,0,0,0.35);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transform: translate(-50%, -50%);
+        }
+        .hold-progress svg {
+            width: 38px;
+            height: 38px;
+            transform: rotate(-90deg);
+        }
+        .hold-progress circle {
+            fill: none;
+            stroke-width: 4;
+            cx: 19;
+            cy: 19;
+            r: 16;
+        }
+        .hold-progress .bg { stroke: rgba(255,255,255,0.25); }
+        .hold-progress .fg { stroke: var(--rd-pink); stroke-linecap: round; transition: stroke-dashoffset 0.1s linear; }
+
         /* --- TERMINAL --- */
         #terminal-window {
             position: absolute;
@@ -242,6 +277,7 @@
             .start-btn { padding: 8px 12px; }
             .title-bar { height: 26px; }
             .rd-btn-small { width: 22px; height: 22px; }
+            .tree-line { min-height: 28px; }
         }
 
         @media (max-width: 400px) {
@@ -251,6 +287,14 @@
     </style>
 </head>
 <body onclick="handleBackgroundClick(event)" oncontextmenu="return false;">
+
+    <!-- Hold-to-drag progress ring -->
+    <div id="hold-progress" class="hold-progress">
+        <svg viewBox="0 0 38 38">
+            <circle class="bg"></circle>
+            <circle class="fg" id="hold-progress-fg" stroke-dasharray="100.5" stroke-dashoffset="100.5"></circle>
+        </svg>
+    </div>
 
     <div id="desktop">
         <div id="app-window" class="outset">
@@ -343,7 +387,7 @@
             </div>
 
             <div class="status-bar">
-                <div class="status-pane" style="flex-grow:1" id="status-msg">System Ready.</div>
+                <div class="status-pane" style="flex-grow:1" id="status-msg">System Ready. Hold a file for 5s to drag on mobile.</div>
                 <div class="status-pane" id="cursor-info" style="width:110px">Ln 1, Col 1</div>
                 <div class="status-pane" style="width:50px">R98</div>
             </div>
@@ -504,7 +548,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
         // --- DATA ---
-        let appData = JSON.parse(localStorage.getItem('rd98_pro_final_v9_pink')) || {
+        let appData = JSON.parse(localStorage.getItem('rd98_pro_final_v10_pink')) || {
             files: [],
             activeId: null,
             tabs: [],
@@ -513,17 +557,16 @@
         };
 
         const tips = [
+            "On mobile, hold a file for 5 seconds to pick it up, then drag.",
             "Use Ctrl+S to save instantly.",
             "Open Tools > Command Prompt to run real Python with pip.",
             "Press F2 to rename the selected file or folder.",
             "Right-click (or long-press) a file to delete or download it.",
             "Try: PIP INSTALL requests — then import it in a .py file.",
             "numpy is pre-loaded — 'import numpy' just works.",
-            "In the CMD, Ctrl+C cancels the current line or command.",
             "Use Ctrl+F to find text.",
             "Drag and drop files in the tree to move them between folders.",
             "Drag a file onto the empty area below the tree to move it to root.",
-            "Long-press (5s) on mobile to open the context menu.",
             "Click anywhere outside the tree to deselect."
         ];
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -547,6 +590,8 @@
         const taskbarItem = document.getElementById('taskbar-item');
         const taskbarTerm = document.getElementById('taskbar-term');
         const startMenu = document.getElementById('start-menu');
+        const holdProgressEl = document.getElementById('hold-progress');
+        const holdProgressFg = document.getElementById('hold-progress-fg');
 
         // --- UNDO STACK ---
         let undoStack = [];
@@ -589,11 +634,9 @@
 
         function handleBackgroundClick(e) {
             const target = e.target;
-            // Close all menus/dropdowns when clicking outside
             if (!target.closest('.dropdown') && !target.closest('.menu-trigger')) {
                 closeMenus();
             }
-            // Don't deselect if clicking inside interactive elements
             if (target.closest('.tree-line') || 
                 target.closest('.dropdown') || 
                 target.closest('.menu-bar') ||
@@ -603,7 +646,8 @@
                 target.closest('.rd-btn-small') ||
                 target.closest('.btn-action') ||
                 target.closest('.tab') ||
-                target.closest('.start-btn')) {
+                target.closest('.start-btn') ||
+                target.closest('.hold-progress')) {
                 return;
             }
             if (target.closest('#tree-view')) {
@@ -620,65 +664,318 @@
             }
         }
 
-        // --- MOBILE LONG PRESS CONTEXT MENU (5 seconds) ---
-        let longPressTimer = null;
-        let longPressTarget = null;
+        // ============================================================
+        // TOUCH: HOLD-TO-DRAG (5 SECONDS) + LONG PRESS CONTEXT MENU
+        // ============================================================
+        const HOLD_DURATION = 5000;   // 5 seconds to pick up
+        const LONGPRESS_DURATION = 5000; // 5 seconds for context menu (only when not moving)
 
-        function startLongPress(e, mode) {
-            clearLongPress();
-            longPressTarget = { x: e.touches ? e.touches[0].clientX : e.clientX, y: e.touches ? e.touches[0].clientY : e.clientY, mode };
-            longPressTimer = setTimeout(() => {
-                if (longPressTarget) {
-                    const syntheticEvent = {
+        let touchState = {
+            active: false,
+            itemId: null,
+            itemEl: null,
+            startX: 0,
+            startY: 0,
+            startTime: 0,
+            holdTimer: null,
+            longPressTimer: null,
+            mode: null, // 'hold' | 'longpress' | null
+            dragging: false,
+            ghostEl: null,
+            progressStart: 0,
+            progressRAF: null,
+            moved: false,
+            pointerId: null
+        };
+
+        // The unified touch handler for the tree
+        function onTreeTouchStart(e) {
+            const line = e.target.closest('.tree-line');
+            if (!line) return;
+            const fileId = line.dataset.fileId;
+            if (!fileId) return;
+            const item = appData.files.find(f => f.id === fileId);
+            if (!item) return;
+
+            // Don't interfere with the folder toggle
+            if (e.target.closest('.tree-folder-toggle')) return;
+
+            const touch = e.touches[0];
+            touchState.active = true;
+            touchState.itemId = fileId;
+            touchState.itemEl = line;
+            touchState.startX = touch.clientX;
+            touchState.startY = touch.clientY;
+            touchState.startTime = Date.now();
+            touchState.mode = null;
+            touchState.dragging = false;
+            touchState.moved = false;
+
+            // Select the item visually
+            if (appData.activeId !== fileId) {
+                selectItem(fileId, true);
+            }
+
+            // Start hold timer (5 seconds) -> enter drag mode
+            touchState.holdTimer = setTimeout(() => {
+                if (!touchState.active) return;
+                // If the user hasn't moved and hasn't triggered long press yet, start drag mode
+                if (!touchState.moved && touchState.mode !== 'longpress') {
+                    enterDragMode();
+                }
+            }, HOLD_DURATION);
+
+            // Start long-press timer (5 seconds) -> show context menu (only if not dragging)
+            touchState.longPressTimer = setTimeout(() => {
+                if (!touchState.active) return;
+                if (!touchState.moved && touchState.mode !== 'hold') {
+                    // If we're already in drag mode, don't show the context menu
+                    if (touchState.dragging) return;
+                    showContextMenu({
                         preventDefault: () => {},
                         stopPropagation: () => {},
-                        pageX: longPressTarget.x,
-                        pageY: longPressTarget.y,
-                        clientX: longPressTarget.x,
-                        clientY: longPressTarget.y,
-                        target: e.target
-                    };
-                    showContextMenu(syntheticEvent, longPressTarget.mode);
-                    longPressTarget = null;
+                        pageX: touchState.startX,
+                        pageY: touchState.startY,
+                        clientX: touchState.startX,
+                        clientY: touchState.startY,
+                        target: touchState.itemEl
+                    }, 'tree');
+                    touchState.mode = 'longpress';
                     if (navigator.vibrate) navigator.vibrate(20);
                 }
-            }, 5000);
+            }, LONGPRESS_DURATION);
+
+            // Start the progress ring animation
+            touchState.progressStart = Date.now();
+            startProgressAnimation();
         }
 
-        function clearLongPress() {
-            if (longPressTimer) {
-                clearTimeout(longPressTimer);
-                longPressTimer = null;
+        function startProgressAnimation() {
+            const total = HOLD_DURATION;
+            const circumference = 2 * Math.PI * 16; // r=16
+            function tick() {
+                if (!touchState.active) return;
+                const elapsed = Date.now() - touchState.progressStart;
+                const pct = Math.min(elapsed / total, 1);
+                const offset = circumference * (1 - pct);
+                holdProgressFg.setAttribute('stroke-dashoffset', offset);
+                if (pct < 1 && touchState.active && !touchState.dragging) {
+                    touchState.progressRAF = requestAnimationFrame(tick);
+                }
+            }
+            holdProgressFg.setAttribute('stroke-dasharray', circumference);
+            holdProgressFg.setAttribute('stroke-dashoffset', circumference);
+            tick();
+        }
+
+        function onTreeTouchMove(e) {
+            if (!touchState.active) return;
+            const touch = e.touches[0];
+            const dx = touch.clientX - touchState.startX;
+            const dy = touch.clientY - touchState.startY;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+
+            if (dist > 10) {
+                touchState.moved = true;
+                // Cancel hold & long press if the user moves before 5 seconds
+                if (!touchState.dragging && touchState.mode !== 'hold') {
+                    clearHoldTimers();
+                    hideHoldProgress();
+                    // If they're dragging but not in hold mode, allow native scroll
+                }
+            }
+
+            if (touchState.dragging && touchState.ghostEl) {
+                // Update ghost position
+                touchState.ghostEl.style.left = touch.clientX + 'px';
+                touchState.ghostEl.style.top = touch.clientY + 'px';
+
+                // Highlight drop target
+                const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                document.querySelectorAll('.tree-line').forEach(el => el.classList.remove('tree-dragover'));
+                treeEl.classList.remove('tree-root-drop');
+                if (elemBelow) {
+                    const targetLine = elemBelow.closest('.tree-line');
+                    if (targetLine && targetLine !== touchState.itemEl) {
+                        const targetId = targetLine.dataset.fileId;
+                        const targetItem = appData.files.find(f => f.id === targetId);
+                        if (targetItem && targetItem.type === 'folder') {
+                            targetLine.classList.add('tree-dragover');
+                        }
+                    } else if (elemBelow.closest('#tree-view') && !targetLine) {
+                        treeEl.classList.add('tree-root-drop');
+                    }
+                }
+                e.preventDefault();
             }
         }
 
-        document.addEventListener('touchstart', (e) => {
-            if (e.target.closest('.tree-line') || e.target.closest('#tree-view')) {
-                const line = e.target.closest('.tree-line');
-                if (line) {
-                    const fileId = line.dataset.fileId;
-                    if (fileId) {
-                        const item = appData.files.find(f => f.id === fileId);
-                        if (item) selectItem(fileId, true);
+        function onTreeTouchEnd(e) {
+            if (!touchState.active) return;
+
+            clearHoldTimers();
+            hideHoldProgress();
+
+            if (touchState.dragging && touchState.ghostEl) {
+                // Perform drop
+                const touch = e.changedTouches[0];
+                const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                const sourceId = touchState.itemId;
+                const source = appData.files.find(f => f.id === sourceId);
+
+                document.querySelectorAll('.tree-line').forEach(el => el.classList.remove('tree-dragover'));
+                treeEl.classList.remove('tree-root-drop');
+
+                if (elemBelow && source) {
+                    const targetLine = elemBelow.closest('.tree-line');
+                    if (targetLine && targetLine !== touchState.itemEl) {
+                        const targetId = targetLine.dataset.fileId;
+                        const targetItem = appData.files.find(f => f.id === targetId);
+                        if (targetItem && targetItem.type === 'folder') {
+                            // Prevent moving a folder into its own descendant
+                            let check = targetItem;
+                            let valid = true;
+                            while (check) {
+                                if (check.id === source.id) { valid = false; break; }
+                                check = appData.files.find(f => f.id === check.parent);
+                            }
+                            if (valid) {
+                                source.parent = targetItem.id;
+                                targetItem.expanded = true;
+                                renderTree();
+                                saveData(true);
+                                statusEl.textContent = `Moved "${source.name}" into "${targetItem.name}".`;
+                                playClick();
+                            } else {
+                                statusEl.textContent = "Cannot move a folder into itself.";
+                            }
+                        }
+                    } else if (elemBelow.closest('#tree-view') && !targetLine) {
+                        // Dropped on root area
+                        if (source.parent !== null) {
+                            source.parent = null;
+                            renderTree();
+                            saveData(true);
+                            statusEl.textContent = `Moved "${source.name}" to the root.`;
+                            playClick();
+                        }
                     }
                 }
-                startLongPress(e, 'tree');
-            } else if (e.target.closest('#code-editor')) {
-                startLongPress(e, 'editor');
+
+                if (touchState.ghostEl) {
+                    touchState.ghostEl.remove();
+                    touchState.ghostEl = null;
+                }
+                touchState.itemEl.classList.remove('touch-dragging');
+            }
+
+            // If the user just tapped (no drag, no long press), toggle selection
+            const elapsed = Date.now() - touchState.startTime;
+            if (!touchState.dragging && touchState.mode !== 'longpress' && !touchState.moved && elapsed < 500) {
+                // Quick tap: select or deselect
+                if (appData.activeId === touchState.itemId) {
+                    deselectAll();
+                } else {
+                    selectItem(touchState.itemId);
+                }
+                playClick();
+            }
+
+            // Reset state
+            touchState.active = false;
+            touchState.itemId = null;
+            touchState.itemEl = null;
+            touchState.dragging = false;
+            touchState.mode = null;
+            touchState.moved = false;
+            if (touchState.progressRAF) {
+                cancelAnimationFrame(touchState.progressRAF);
+                touchState.progressRAF = null;
+            }
+        }
+
+        function enterDragMode() {
+            if (!touchState.active || touchState.dragging) return;
+            touchState.dragging = true;
+            touchState.mode = 'hold';
+            hideHoldProgress();
+            clearHoldTimers();
+
+            const item = appData.files.find(f => f.id === touchState.itemId);
+            if (!item) return;
+
+            // Create ghost element
+            const ghost = document.createElement('div');
+            ghost.className = 'tree-line touch-drag-ghost';
+            ghost.textContent = (item.type === 'folder' ? '[' + item.name + ']' : item.name);
+            ghost.style.left = touchState.startX + 'px';
+            ghost.style.top = touchState.startY + 'px';
+            document.body.appendChild(ghost);
+            touchState.ghostEl = ghost;
+
+            touchState.itemEl.classList.add('touch-dragging');
+            if (navigator.vibrate) navigator.vibrate(30);
+            statusEl.textContent = `Dragging "${item.name}" — release on a folder to move.`;
+
+            // Prevent scrolling while dragging
+            document.body.style.overflow = 'hidden';
+            document.addEventListener('touchmove', preventScrollWhileDragging, { passive: false });
+        }
+
+        function preventScrollWhileDragging(e) {
+            if (touchState.dragging) {
+                e.preventDefault();
+            }
+        }
+
+        function clearHoldTimers() {
+            if (touchState.holdTimer) { clearTimeout(touchState.holdTimer); touchState.holdTimer = null; }
+            if (touchState.longPressTimer) { clearTimeout(touchState.longPressTimer); touchState.longPressTimer = null; }
+        }
+
+        function hideHoldProgress() {
+            holdProgressEl.style.display = 'none';
+        }
+
+        function showHoldProgress(x, y) {
+            holdProgressEl.style.left = x + 'px';
+            holdProgressEl.style.top = y + 'px';
+            holdProgressEl.style.display = 'flex';
+        }
+
+        // Show the hold progress ring as soon as the user touches a file
+        document.addEventListener('touchstart', (e) => {
+            const line = e.target.closest('.tree-line');
+            if (line) {
+                const touch = e.touches[0];
+                showHoldProgress(touch.clientX, touch.clientY);
             }
         }, { passive: true });
 
-        document.addEventListener('touchend', clearLongPress);
-        document.addEventListener('touchmove', clearLongPress);
-        document.addEventListener('touchcancel', clearLongPress);
+        // Bind the touch events to the tree
+        treeEl.addEventListener('touchstart', onTreeTouchStart, { passive: true });
+        treeEl.addEventListener('touchmove', onTreeTouchMove, { passive: false });
+        treeEl.addEventListener('touchend', onTreeTouchEnd, { passive: true });
+        treeEl.addEventListener('touchcancel', (e) => {
+            clearHoldTimers();
+            hideHoldProgress();
+            if (touchState.ghostEl) { touchState.ghostEl.remove(); touchState.ghostEl = null; }
+            if (touchState.itemEl) touchState.itemEl.classList.remove('touch-dragging');
+            touchState.active = false;
+            touchState.dragging = false;
+            if (touchState.progressRAF) { cancelAnimationFrame(touchState.progressRAF); touchState.progressRAF = null; }
+        }, { passive: true });
 
-        document.addEventListener('contextmenu', (e) => {
-            if (e.target.closest('.tree-line') || e.target.closest('#code-editor')) {
-                e.preventDefault();
+        // Update the hold progress ring position on move
+        document.addEventListener('touchmove', (e) => {
+            if (touchState.active && !touchState.dragging && holdProgressEl.style.display === 'flex') {
+                const touch = e.touches[0];
+                holdProgressEl.style.left = touch.clientX + 'px';
+                holdProgressEl.style.top = touch.clientY + 'px';
             }
-        });
+        }, { passive: true });
 
-        // --- DRAG AND DROP ---
+        // --- MOUSE DRAG AND DROP (desktop) ---
         let draggedItemId = null;
 
         function makeDraggable(div, item) {
@@ -1082,7 +1379,7 @@
         }
 
         function saveData(silent = false) {
-            localStorage.setItem('rd98_pro_final_v9_pink', JSON.stringify(appData));
+            localStorage.setItem('rd98_pro_final_v10_pink', JSON.stringify(appData));
             if(!silent) { statusEl.textContent = "Workspace persistent."; playClick(); }
         }
 
@@ -1150,7 +1447,6 @@
             return ids;
         }
 
-        // Generic delete (used by keyboard Delete key)
         function deleteCurrent() {
             const item = appData.files.find(f => f.id === appData.activeId);
             if (!item) return;
@@ -1208,7 +1504,7 @@
             closeMenus();
         }
 
-        // --- SAVE PROJECT (WHOLE WORKSPACE) ---
+        // --- SAVE PROJECT ---
         function saveProject() {
             const item = appData.files.find(f => f.id === appData.activeId);
             if (item && item.type === 'file') {
@@ -1401,7 +1697,6 @@
             ctxMenu.style.top = Math.min(pageY, window.innerHeight - 250) + 'px';
             document.getElementById('ctx-tree-opts').style.display = mode === 'tree' ? 'block' : 'none';
             document.getElementById('ctx-editor-opts').style.display = mode === 'editor' ? 'block' : 'none';
-            clearLongPress();
         }
 
         function toggleFont(type) {
@@ -1449,7 +1744,6 @@
             closeMenus();
         }
 
-        // --- RENAME ---
         function renameCurrent() {
             const item = appData.files.find(f => f.id === appData.activeId);
             if (!item) {
@@ -1525,7 +1819,7 @@
             } else if (name.endsWith('.PY')) {
                 runPython(item);
             } else {
-                showRunText(`Run: ${item.name}`, `Cannot run "${item.name}".\n\nSupported file types: .html, .js, .py\nRename or export this file to run it in another tool.`);
+                showRunText(`Run: ${item.name}`, `Cannot run "${item.name}".\n\nSupported file types: .html, .js, .py`);
                 statusEl.textContent = `Unsupported file type: ${item.name}`;
             }
         }
@@ -1550,8 +1844,7 @@
             }
 
             showRunFrame(`Run: ${item.name}`, html);
-            const extra = (jsFiles.length || cssFiles.length) ? ` (bundled with ${jsFiles.length} JS + ${cssFiles.length} CSS sibling file(s))` : '';
-            statusEl.textContent = `Running ${item.name}${extra}.`;
+            statusEl.textContent = `Running ${item.name}.`;
         }
 
         function runJS(item) {
@@ -1718,7 +2011,7 @@
             const nameMatches = appData.files.filter(f => f.name.includes(find));
             if (nameMatches.length > 0) {
                 selectItem(nameMatches[0].id, true);
-                statusEl.textContent = `Not in file content. Matched ${nameMatches.length} file/folder name(s), showing "${nameMatches[0].name}".`;
+                statusEl.textContent = `Matched ${nameMatches.length} file/folder name(s).`;
                 playClick();
                 return;
             }
@@ -1755,7 +2048,7 @@
                 return;
             }
 
-            statusEl.textContent = "Select the text to replace first, or select a file/folder whose name matches.";
+            statusEl.textContent = "Select the text to replace first.";
         }
 
         function replaceAllText() {
@@ -1782,10 +2075,7 @@
             if (renamedCount > 0) { renderTree(); renderTabs(); saveData(true); }
 
             if (contentChanged || renamedCount > 0) {
-                const parts = [];
-                if (contentChanged) parts.push('the open file');
-                if (renamedCount > 0) parts.push(`${renamedCount} file/folder name(s)`);
-                statusEl.textContent = `Replaced all "${find}" with "${replace}" in ${parts.join(' and ')}.`;
+                statusEl.textContent = `Replaced all "${find}" with "${replace}".`;
                 playClick();
                 closeModal();
             } else {
@@ -1793,9 +2083,7 @@
             }
         }
 
-        // ============================================================
-        // RETRODEV 98 - INTERNAL CMD (Real Python + Real pip via Pyodide)
-        // ============================================================
+        // --- TERMINAL ---
         let termPyodide = null;
         let termPyodideLoading = null;
         let termCwd = '/home/pyodide';
@@ -1915,7 +2203,7 @@ except Exception:
                 if (termBusy) {
                     termAbort = true;
                     termPrint('^C', 'warn');
-                    termPrint('[abort requested — waiting for current step to yield]', 'dim');
+                    termPrint('[abort requested]', 'dim');
                 } else {
                     termPrint('^C', 'warn');
                 }
@@ -1974,10 +2262,6 @@ except Exception:
             }
         }
 
-        function termYield() {
-            return new Promise(r => setTimeout(r, 0));
-        }
-
         async function runTermCommand(raw) {
             const line = raw.trim();
             if (!line) return;
@@ -2003,7 +2287,7 @@ except Exception:
                         termPrint('  ECHO <text>       Print text');
                         termPrint('  PY <file>         Run a Python file');
                         termPrint('  PY -c "<code>"    Run inline Python code');
-                        termPrint('  PY                Enter Python REPL (type exit() to leave)');
+                        termPrint('  PY                Enter Python REPL');
                         termPrint('  PIP <args>        Real pip. e.g.  PIP INSTALL requests');
                         termPrint('  PIP LIST          Show installed packages');
                         termPrint('  REN <old> <new>   Rename a file in the workspace');
@@ -2193,7 +2477,6 @@ exec(compile(_src, _os.path.abspath(_src_path), 'exec'), _g)
                 termPrint('PIP - Real Python package installer (via micropip/Pyodide)', 'info');
                 termPrint('');
                 termPrint('  PIP INSTALL <pkg> [pkg2 ...]   Install one or more packages');
-                termPrint('  PIP INSTALL <pkg>==1.2.3        Install a specific version');
                 termPrint('  PIP UNINSTALL <pkg>             Uninstall a package');
                 termPrint('  PIP LIST                        List installed packages');
                 termPrint('  PIP FREEZE                      Show installed with versions');
@@ -2261,8 +2544,6 @@ try:
     lines.append('Name: ' + (meta['Name'] or name))
     lines.append('Version: ' + d.version)
     if meta['Summary']: lines.append('Summary: ' + meta['Summary'])
-    if meta['Home-page']: lines.append('Home-page: ' + meta['Home-page'])
-    if meta['Author']: lines.append('Author: ' + meta['Author'])
     '\\n'.join(lines)
 except Exception as ex:
     'ERR: ' + str(ex)
@@ -2280,19 +2561,15 @@ except Exception as ex:
                 termPrint('');
                 termPrint('Installing: ' + rest.join(', '), 'info');
                 termPrint('');
-                termPrint('(press Ctrl+C to abort)', 'dim');
                 try {
                     const pkgsJson = JSON.stringify(rest);
                     const pyCode = `
 import micropip
 
-async def _do_install(_abort_check):
+async def _do_install():
     pkgs = ${pkgsJson}
     results = []
     for pkg in pkgs:
-        if _abort_check():
-            results.append(('ABORT', pkg, 'cancelled by user'))
-            break
         try:
             await micropip.install(pkg)
             results.append(('OK', pkg, ''))
@@ -2300,18 +2577,15 @@ async def _do_install(_abort_check):
             results.append(('ERR', pkg, str(e)))
     return results
 
-_results = await _do_install(lambda: __import__('js').window.__termAbortFlag)
+_results = await _do_install()
 `;
                     py.setStdout({ batched: (s) => termPrint(s) });
                     py.setStderr({ batched: (s) => termPrint(s, 'err') });
-
-                    window.__termAbortFlag = false;
 
                     await py.runPythonAsync(pyCode);
                     const results = py.globals.get('_results');
                     const arr = results && results.toJs ? results.toJs() : results;
                     let anyErr = false;
-                    let aborted = false;
                     if (arr) {
                         for (const item of arr) {
                             const status = item[0];
@@ -2319,9 +2593,6 @@ _results = await _do_install(lambda: __import__('js').window.__termAbortFlag)
                             const msg = item[2];
                             if (status === 'OK') {
                                 termPrint('Successfully installed ' + pkg, 'ok');
-                            } else if (status === 'ABORT') {
-                                aborted = true;
-                                termPrint('Aborted install of ' + pkg + '.', 'warn');
                             } else {
                                 anyErr = true;
                                 termPrint('Failed to install ' + pkg + ': ' + msg, 'err');
@@ -2330,8 +2601,7 @@ _results = await _do_install(lambda: __import__('js').window.__termAbortFlag)
                     }
                     if (results && results.destroy) results.destroy();
                     termPrint('');
-                    if (aborted) termPrint('Install aborted.', 'warn');
-                    else if (!anyErr) termPrint('All packages installed.', 'ok');
+                    if (!anyErr) termPrint('All packages installed.', 'ok');
                 } catch (err) {
                     termPrint('Install failed: ' + err.message, 'err');
                 }
