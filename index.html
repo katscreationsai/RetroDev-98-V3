@@ -1,0 +1,2781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>RetroDev 98 - Professional Edition (FIXED + CMD + PYODIDE)</title>
+    <style>
+        /* --- RETRODEV 98 DESIGN SYSTEM --- */
+        :root {
+            --rd-teal: #008080;
+            --rd-gray: #c0c0c0;
+            --rd-white: #ffffff;
+            --rd-dark: #808080;
+            --rd-black: #000000;
+            --rd-blue: #000080;
+            --rd-text-gray: #808080;
+            --font-main: "MS Sans Serif", Tahoma, Verdana, sans-serif;
+            --font-fixed: "Courier New", Courier, monospace;
+            --editor-line-height: 20px;
+            --editor-font-size: 13px;
+            --editor-padding-top: 8px;
+        }
+
+        .fixedsys-mode #code-editor, .fixedsys-mode #line-nums {
+            font-family: 'Consolas', 'Monaco', 'Lucida Console', monospace !important;
+            font-size: 14px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font-main); font-size: 11px; -webkit-tap-highlight-color: transparent; }
+
+        body { 
+            background-color: var(--rd-teal); 
+            height: 100vh; 
+            width: 100vw;
+            display: flex; 
+            flex-direction: column;
+            overflow: hidden; 
+            touch-action: manipulation;
+        }
+
+        #desktop {
+            flex-grow: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+        }
+
+        .outset { border-top: 1px solid var(--rd-white); border-left: 1px solid var(--rd-white); border-right: 1px solid var(--rd-dark); border-bottom: 1px solid var(--rd-dark); box-shadow: 1px 1px 0px var(--rd-black); }
+        .inset { border-top: 1px solid var(--rd-dark); border-left: 1px solid var(--rd-dark); border-right: 1px solid var(--rd-white); border-bottom: 1px solid var(--rd-white); }
+
+        #app-window { 
+            width: 98vw; 
+            height: 94vh; 
+            background-color: var(--rd-gray); 
+            display: flex; 
+            flex-direction: column; 
+            padding: 2px; 
+            position: relative; 
+            z-index: 10;
+            transition: width 0.2s, height 0.2s, transform 0.3s;
+            max-width: 1400px;
+        }
+
+        #app-window.mobile-view { width: 375px; height: 667px; max-height: 90vh; border: 4px solid #333; }
+        #app-window.minimized { transform: translateY(120vh) scale(0.1); opacity: 0; pointer-events: none; }
+
+        .title-bar { background: linear-gradient(90deg, var(--rd-blue), #1084d0); height: 22px; display: flex; align-items: center; padding: 0 2px; color: white; font-weight: bold; user-select: none; touch-action: none; }
+        .title-bar-text { flex-grow: 1; padding-left: 2px; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .title-controls { display: flex; gap: 2px; padding-right: 1px; flex-shrink: 0; }
+
+        .rd-btn-small { 
+            width: 18px; height: 18px; background-color: var(--rd-gray); 
+            border: 1px solid var(--rd-white); border-right-color: var(--rd-dark); border-bottom-color: var(--rd-dark); 
+            display: flex; align-items: center; justify-content: center; color: black; font-size: 11px; cursor: pointer; font-weight: bold;
+            touch-action: manipulation;
+        }
+        .rd-btn-small:active { border: 1px solid var(--rd-dark); border-right-color: var(--rd-white); border-bottom-color: var(--rd-white); padding: 1px 0 0 1px; }
+        .min-bar { width: 7px; height: 2px; background: var(--rd-black); display: block; }
+
+        .menu-bar { display: flex; padding: 1px 0; background: var(--rd-gray); border-bottom: 1px solid var(--rd-dark); position: relative; z-index: 100; flex-wrap: wrap; }
+        .menu-container { position: relative; }
+        .menu-trigger { padding: 4px 10px; cursor: pointer; user-select: none; }
+        .menu-trigger:hover, .menu-trigger.active { background: var(--rd-blue); color: white; }
+        
+        .dropdown { position: absolute; top: 100%; left: 0; background: var(--rd-gray); min-width: 180px; display: none; flex-direction: column; box-shadow: 2px 2px 0px rgba(0,0,0,0.5); z-index: 1000; padding: 1px; border: 1px solid var(--rd-white); border-right-color: var(--rd-dark); border-bottom-color: var(--rd-dark); }
+        .dropdown-item { padding: 6px 15px; color: black; text-decoration: none; white-space: nowrap; display: flex; justify-content: space-between; gap: 20px; cursor: pointer; touch-action: manipulation; }
+        .dropdown-item:hover { background: var(--rd-blue); color: white; }
+        .dropdown-divider { height: 1px; background: var(--rd-dark); margin: 2px 1px; border-bottom: 1px solid var(--rd-white); }
+        .shortcut-hint { color: var(--rd-text-gray); font-size: 9px; }
+
+        .main-content { flex-grow: 1; display: flex; overflow: hidden; padding: 4px; gap: 4px; }
+        .sidebar { width: 180px; background: var(--rd-white); display: flex; flex-direction: column; overflow-y: auto; min-width: 120px; }
+        .sidebar-header { background: var(--rd-gray); padding: 3px 6px; border-bottom: 1px solid var(--rd-dark); font-weight: bold; position: sticky; top: 0; z-index: 5; }
+        
+        .tree-container { padding: 4px; white-space: pre; font-family: var(--font-fixed); font-size: 11px; flex-grow: 1; overflow-y: auto; }
+        .tree-line { display: flex; align-items: center; min-height: 22px; cursor: pointer; user-select: none; padding: 2px 4px; border-radius: 2px; }
+        .tree-line:hover { background-color: #f0f0f0; }
+        .tree-line.active { background-color: var(--rd-blue); color: white; }
+        .tree-line.rd-name-match { box-shadow: inset 3px 0 0 0 #ff8000; }
+        .tree-text { font-family: var(--font-main); margin-left: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tree-folder-toggle { cursor: pointer; margin-right: 4px; font-weight: bold; min-width: 16px; text-align: center; user-select: none; touch-action: manipulation; }
+        .tree-children { padding-left: 16px; }
+        .tree-dragover { background-color: #d0e0ff !important; outline: 2px dashed var(--rd-blue); }
+
+        .editor-container { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; background: var(--rd-gray); }
+        .tabs-strip { display: flex; align-items: flex-end; padding-left: 2px; height: 28px; background: var(--rd-gray); border-bottom: 1px solid var(--rd-white); z-index: 2; overflow-x: auto; scrollbar-width: none; }
+        .tab { position: relative; padding: 5px 12px 3px 12px; margin-right: 2px; background: var(--rd-gray); cursor: pointer; border: 1px solid var(--rd-white); border-right-color: var(--rd-dark); border-bottom: none; box-shadow: 1px 0px 0px var(--rd-black); border-top-left-radius: 2px; border-top-right-radius: 2px; display: flex; align-items: center; gap: 8px; color: #000; z-index: 1; white-space: nowrap; touch-action: manipulation; }
+        .tab.active { padding: 6px 14px 5px 14px; margin-bottom: -1px; font-weight: bold; z-index: 3; border-bottom: 1px solid var(--rd-gray); }
+        .tab-close { font-size: 10px; color: var(--rd-dark); padding: 2px; cursor: pointer; min-width: 16px; text-align: center; }
+
+        .editor-body { flex-grow: 1; background: var(--rd-white); display: flex; position: relative; border: 1px solid var(--rd-dark); border-right-color: var(--rd-white); border-bottom-color: var(--rd-white); box-shadow: inset 1px 1px 0px var(--rd-black); overflow: hidden; }
+        
+        #line-nums { 
+            width: 50px;
+            background: #f0f0f0; 
+            border-right: 1px solid var(--rd-dark); 
+            text-align: center;
+            color: #888; 
+            user-select: none; 
+            overflow: hidden; 
+            padding-top: var(--editor-padding-top);
+            font-family: var(--font-fixed);
+            font-size: var(--editor-font-size);
+            line-height: var(--editor-line-height);
+            padding-left: 4px;
+            padding-right: 4px;
+            cursor: pointer;
+            flex-shrink: 0;
+            touch-action: manipulation;
+        }
+        #line-nums span:hover {
+            background: #d0d0d0;
+        }
+        
+        #code-editor { 
+            flex-grow: 1; 
+            border: none; 
+            outline: none; 
+            resize: none; 
+            background: transparent;
+            padding-left: 12px;
+            padding-top: var(--editor-padding-top);
+            font-family: var(--font-fixed);
+            font-size: var(--editor-font-size);
+            line-height: var(--editor-line-height);
+            white-space: pre; 
+            overflow: auto; 
+            touch-action: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        ::-webkit-scrollbar { width: 16px; height: 16px; }
+        ::-webkit-scrollbar-track { background: #dfdfdf; background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAABZJREFUeNpi2r9//38gYGAEESAAEGAAasgP/7p9W6UAAAAASUVORK5CYII="); }
+        ::-webkit-scrollbar-thumb { background: var(--rd-gray); border: 1px solid var(--rd-white); border-right: 1px solid var(--rd-dark); border-bottom: 1px solid var(--rd-dark); box-shadow: inset 1px 1px 0 var(--rd-white); }
+
+        #taskbar { height: 32px; background: var(--rd-gray); border-top: 2px solid var(--rd-white); display: flex; align-items: center; padding: 2px; gap: 2px; }
+        .start-btn { font-weight: bold; padding: 4px 10px; margin-right: 5px; cursor: pointer; touch-action: manipulation; }
+        .task-item { min-width: 140px; height: 24px; background: var(--rd-gray); border: 1px solid var(--rd-white); border-right-color: var(--rd-dark); border-bottom-color: var(--rd-dark); padding: 0 8px; display: flex; align-items: center; font-weight: bold; cursor: pointer; touch-action: manipulation; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .task-item.active { border: 1px solid var(--rd-dark); border-right-color: var(--rd-white); border-bottom-color: var(--rd-white); background: #e0e0e0; box-shadow: inset 1px 1px 1px var(--rd-black); }
+
+        .status-bar { height: 22px; display: flex; gap: 2px; padding: 2px; }
+        .status-pane { border: 1px solid var(--rd-dark); border-right-color: var(--rd-white); border-bottom-color: var(--rd-white); padding: 0 8px; display: flex; align-items: center; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); display: none; align-items: center; justify-content: center; z-index: 9000; }
+        .dialog { background: var(--rd-gray); width: 360px; max-width: 92vw; padding: 2px; box-shadow: 2px 2px 10px rgba(0,0,0,0.5); }
+        .dialog-body { padding: 15px; }
+        .dialog-footer { padding: 10px; display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
+        .btn-action { padding: 6px 15px; background: var(--rd-gray); border: 1px solid var(--rd-white); border-right: 1px solid var(--rd-black); border-bottom: 1px solid var(--rd-black); text-align: center; min-width: 75px; cursor: pointer; touch-action: manipulation; }
+        .btn-action:active { border: 1px solid var(--rd-black); border-right-color: var(--rd-white); border-bottom-color: var(--rd-white); }
+
+        /* --- TERMINAL --- */
+        #terminal-window {
+            position: absolute;
+            display: none;
+            flex-direction: column;
+            width: 700px;
+            max-width: 95vw;
+            height: 480px;
+            max-height: 80vh;
+            background: var(--rd-gray);
+            padding: 2px;
+            z-index: 50;
+            left: 80px;
+            top: 60px;
+            touch-action: none;
+        }
+        #terminal-body {
+            flex-grow: 1;
+            background: #000;
+            color: #c0c0c0;
+            font-family: var(--font-fixed);
+            font-size: 13px;
+            line-height: 16px;
+            overflow-y: auto;
+            padding: 6px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            cursor: text;
+            -webkit-overflow-scrolling: touch;
+        }
+        #terminal-output div { min-height: 16px; }
+        #terminal-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #c0c0c0;
+            font-family: var(--font-fixed);
+            font-size: 13px;
+            flex-grow: 1;
+            margin-left: 4px;
+            caret-color: #33ff33;
+            touch-action: auto;
+        }
+        #terminal-prompt { color: #33ff33; flex-shrink: 0; }
+
+        .ctx-menu-item { padding: 8px 15px; cursor: pointer; touch-action: manipulation; }
+        .ctx-menu-item:hover { background: var(--rd-blue); color: white; }
+
+        @media (max-width: 600px) {
+            .sidebar { width: 140px; }
+            #line-nums { width: 36px; font-size: 11px; }
+            #code-editor { font-size: 12px; }
+            .tab { padding: 4px 8px; font-size: 10px; }
+            .menu-trigger { padding: 6px 8px; }
+            .dropdown-item { padding: 10px 15px; }
+            .btn-action { padding: 10px 20px; }
+        }
+    </style>
+</head>
+<body onclick="closeMenus()" oncontextmenu="return false;">
+
+    <div id="desktop">
+        <div id="app-window" class="outset">
+            <div class="title-bar">
+                <div class="title-bar-text">RETRODEV 98 - PROFESSIONAL EDITION</div>
+                <div class="title-controls">
+                    <div class="rd-btn-small" onclick="minimizeWindow()"><span class="min-bar"></span></div>
+                    <div class="rd-btn-small" onclick="toggleMaximize()">□</div>
+                    <div class="rd-btn-small" onclick="closeApp()">X</div>
+                </div>
+            </div>
+
+            <div class="menu-bar">
+                <div class="menu-container">
+                    <div class="menu-trigger" onclick="openMenu(event, 'file-menu')">File</div>
+                    <div id="file-menu" class="dropdown outset">
+                        <div class="dropdown-item" onclick="runActiveFile()">Run <span class="shortcut-hint">F5</span></div>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-item" onclick="promptNewFile()">New File...</div>
+                        <div class="dropdown-item" onclick="promptNewFolder()">New Root Folder...</div>
+                        <div class="dropdown-item" onclick="renameCurrent()">Rename... <span class="shortcut-hint">F2</span></div>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-item" onclick="downloadCurrentFolder()">Download Folder (ZIP)</div>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-item" onclick="copyText()">Copy All Content <span class="shortcut-hint">Ctrl+C</span></div>
+                        <div class="dropdown-item" onclick="saveProject()">Save Project <span class="shortcut-hint">Ctrl+S</span></div>
+                        <div class="dropdown-item" onclick="exportFile()">Export... <span class="shortcut-hint">Ctrl+P</span></div>
+                    </div>
+                </div>
+                <div class="menu-container">
+                    <div class="menu-trigger" onclick="openMenu(event, 'edit-menu')">Edit</div>
+                    <div id="edit-menu" class="dropdown outset">
+                        <div class="dropdown-item" onclick="undoAction()">Undo <span class="shortcut-hint">Ctrl+Z</span></div>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-item" onclick="copyText()">Copy <span class="shortcut-hint">Ctrl+C</span></div>
+                        <div class="dropdown-item" onclick="pasteText()">Paste <span class="shortcut-hint">Ctrl+V</span></div>
+                        <div class="dropdown-item" onclick="selectAllText()">Select All <span class="shortcut-hint">Ctrl+A</span></div>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-item" onclick="renameCurrent()">Rename... <span class="shortcut-hint">F2</span></div>
+                    </div>
+                </div>
+                <div class="menu-container">
+                    <div class="menu-trigger" onclick="openMenu(event, 'view-menu')">View</div>
+                    <div id="view-menu" class="dropdown outset">
+                        <div class="dropdown-item" onclick="toggleViewMode()">Mobile/Desktop View</div>
+                        <div class="dropdown-item" onclick="toggleFont('fixed')">Fixedsys Legacy</div>
+                    </div>
+                </div>
+                <div class="menu-container">
+                    <div class="menu-trigger" onclick="openMenu(event, 'tools-menu')">Tools</div>
+                    <div id="tools-menu" class="dropdown outset">
+                        <div class="dropdown-item" onclick="openTerminal()">Command Prompt</div>
+                        <div class="dropdown-item" onclick="openTerminalAndRun('PIP LIST')">List Python Packages</div>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-item" onclick="preloadPythonStack()">Preload numpy (fast)</div>
+                    </div>
+                </div>
+                <div class="menu-container">
+                    <div class="menu-trigger" onclick="openMenu(event, 'search-menu')">Search</div>
+                    <div id="search-menu" class="dropdown outset">
+                        <div class="dropdown-item" onclick="showFindDialog()">Find... <span class="shortcut-hint">Ctrl+F</span></div>
+                        <div class="dropdown-item" onclick="showReplaceDialog()">Replace... <span class="shortcut-hint">Ctrl+H</span></div>
+                    </div>
+                </div>
+                <div class="menu-container">
+                    <div class="menu-trigger" onclick="openMenu(event, 'help-menu')">Help</div>
+                    <div id="help-menu" class="dropdown outset">
+                        <div class="dropdown-item" onclick="showTip()">Tip of the Day...</div>
+                        <div class="dropdown-item" onclick="showAbout()">About RetroDev 98...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="main-content">
+                <div class="sidebar inset" oncontextmenu="event.stopPropagation(); showContextMenu(event, 'tree')">
+                    <div class="sidebar-header">Folders</div>
+                    <div id="tree-view" class="tree-container"></div>
+                </div>
+                <div class="editor-container">
+                    <div id="tab-strip" class="tabs-strip"></div>
+                    <div class="editor-body">
+                        <div id="line-nums"></div>
+                        <textarea id="code-editor" spellcheck="false" placeholder="Start typing..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="status-bar">
+                <div class="status-pane" style="flex-grow:1" id="status-msg">System Ready.</div>
+                <div class="status-pane" id="cursor-info" style="width:140px">Ln 1, Col 1</div>
+                <div class="status-pane" style="width:60px">R98</div>
+            </div>
+        </div>
+
+        <!-- TERMINAL WINDOW -->
+        <div id="terminal-window" class="outset">
+            <div class="title-bar">
+                <div class="title-bar-text">C:\RETRODEV98\CMD.EXE</div>
+                <div class="title-controls">
+                    <div class="rd-btn-small" onclick="minimizeTerminal()"><span class="min-bar"></span></div>
+                    <div class="rd-btn-small" onclick="closeTerminal()">X</div>
+                </div>
+            </div>
+            <div id="terminal-body" onclick="document.getElementById('terminal-input').focus()">
+                <div id="terminal-output"></div>
+                <div style="display:flex; align-items:center;">
+                    <span id="terminal-prompt">C:\RETRODEV98&gt;</span>
+                    <input id="terminal-input" type="text" spellcheck="false" autocomplete="off" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="context-menu" class="dropdown outset" style="position:fixed; display:none; z-index:5000; width:190px;">
+        <div id="ctx-tree-opts" style="display:none">
+            <div class="ctx-menu-item" onclick="promptNewFile()">New File</div>
+            <div class="ctx-menu-item" onclick="promptNewFolder()">New Folder</div>
+            <div class="ctx-menu-item" onclick="renameCurrent()">Rename <span class="shortcut-hint">F2</span></div>
+            <div class="ctx-menu-item" onclick="deleteCurrent()">Delete</div>
+            <div class="dropdown-divider"></div>
+            <div class="ctx-menu-item" onclick="downloadCurrentFolder()">Download Folder (ZIP)</div>
+            <div class="dropdown-divider"></div>
+            <div class="ctx-menu-item" onclick="toggleFolderAndRefresh()">Collapse/Expand</div>
+        </div>
+        <div id="ctx-editor-opts">
+            <div class="ctx-menu-item" onclick="copyText()">Copy <span class="shortcut-hint">Ctrl+C</span></div>
+            <div class="ctx-menu-item" onclick="pasteText()">Paste <span class="shortcut-hint">Ctrl+V</span></div>
+            <div class="dropdown-divider"></div>
+            <div class="ctx-menu-item" onclick="renameCurrent()">Rename File <span class="shortcut-hint">F2</span></div>
+            <div class="dropdown-divider"></div>
+            <div class="ctx-menu-item" onclick="downloadCurrentFolder()">Download Folder (ZIP)</div>
+        </div>
+    </div>
+
+    <div id="taskbar" class="outset">
+        <div class="btn-action start-btn" onclick="toggleStartMenu(event)"><b>Start</b></div>
+        <div style="width:2px; height:18px; background:var(--rd-dark); border-right:1px solid var(--rd-white); margin:0 4px;"></div>
+        <div id="taskbar-item" class="task-item active" onclick="restoreWindow()">RETRODEV 98</div>
+        <div id="taskbar-term" class="task-item" style="display:none; width:120px;" onclick="openTerminal()">CMD.EXE</div>
+    </div>
+
+    <div id="start-menu" class="dropdown outset" style="position:fixed; bottom:38px; left:10px; display:none; z-index:5000; width:220px;">
+        <div class="dropdown-item" onclick="promptNewFile()">New File</div>
+        <div class="dropdown-item" onclick="promptNewFolder()">New Folder</div>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-item" onclick="openTerminal()">Command Prompt</div>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-item" onclick="showTip()">Tip of the Day</div>
+        <div class="dropdown-item" onclick="showAbout()">About</div>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-item" onclick="toggleViewMode()">Toggle Mobile View</div>
+        <div class="dropdown-item" onclick="closeApp()">Exit RetroDev</div>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-overlay" class="modal-overlay" onclick="if (event.target === this) closeModal();">
+        <div id="input-dialog" class="dialog outset" style="display:none">
+            <div class="title-bar"><div class="title-bar-text">RetroDev Input</div></div>
+            <div class="dialog-body">
+                <p id="diag-prompt" style="margin-bottom:10px"></p>
+                <input type="text" id="diag-input" spellcheck="false" style="width:100%; padding:6px; font-size:14px;">
+            </div>
+            <div class="dialog-footer">
+                <div class="btn-action" id="diag-ok">OK</div>
+                <div class="btn-action" onclick="closeModal()">Cancel</div>
+            </div>
+        </div>
+        <div id="tip-dialog" class="dialog outset" style="display:none">
+            <div class="title-bar"><div class="title-bar-text">Tip of the Day</div></div>
+            <div class="dialog-body">
+                <div style="background:white; padding:15px; border:1px solid var(--rd-dark); min-height:80px">
+                    <p id="tip-content"></p>
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <div class="btn-action" onclick="showTip()">Next Tip</div>
+                <div class="btn-action" onclick="closeModal()">Close</div>
+            </div>
+        </div>
+        <div id="about-dialog" class="dialog outset" style="display:none">
+            <div class="title-bar"><div class="title-bar-text">About RetroDev 98</div></div>
+            <div class="dialog-body">
+                <div style="display:flex; gap:15px;">
+                    <div style="background:var(--rd-blue); color:white; width:40px; height:40px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:24px;">R</div>
+                    <div>
+                        <h2 style="font-size:14px">RetroDev 98 Professional</h2>
+                        <p style="font-size:10px; margin-top:10px; line-height:1.4;">The ultimate distraction-free workspace. Purpose-built for text editing and file architecture management. Includes a real Python runtime with pip and numpy preloaded.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="dialog-footer"><div class="btn-action" onclick="closeModal()">OK</div></div>
+        </div>
+        <div id="find-dialog" class="dialog outset" style="display:none; width:380px;">
+            <div class="title-bar"><div class="title-bar-text">Find / Replace</div></div>
+            <div class="dialog-body">
+                <p style="margin-bottom:4px;">Find:</p>
+                <input type="text" id="find-input" spellcheck="false" style="width:100%; padding:6px;">
+                <p style="margin:8px 0 4px;">Replace with:</p>
+                <input type="text" id="replace-input" spellcheck="false" style="width:100%; padding:6px;">
+                <div style="margin-top:8px; display:flex; justify-content:center; gap:6px; flex-wrap:wrap;">
+                    <div class="btn-action" onclick="findText()">Find</div>
+                    <div class="btn-action" onclick="replaceText()">Replace</div>
+                    <div class="btn-action" onclick="replaceAllText()">Replace All</div>
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <div class="btn-action" onclick="closeModal()">Close</div>
+            </div>
+        </div>
+        <div id="confirm-dialog" class="dialog outset" style="display:none">
+            <div class="title-bar"><div class="title-bar-text" id="confirm-title">Confirm</div></div>
+            <div class="dialog-body">
+                <div style="display:flex; gap:12px; align-items:flex-start;">
+                    <div style="width:24px; height:24px; flex-shrink:0; background:#ffcc00; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; border:1px solid var(--rd-dark);">!</div>
+                    <p id="confirm-message" style="padding-top:2px;"></p>
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <div class="btn-action" id="confirm-ok">OK</div>
+                <div class="btn-action" onclick="closeModal()">Cancel</div>
+            </div>
+        </div>
+        <div id="run-dialog" class="dialog outset" style="display:none; width:540px;">
+            <div class="title-bar">
+                <div class="title-bar-text" id="run-title">Run Output</div>
+                <div class="title-controls"><div class="rd-btn-small" onclick="closeModal()">X</div></div>
+            </div>
+            <div class="dialog-body">
+                <div id="run-output-frame-wrap" style="display:none; border:1px solid var(--rd-dark); border-right-color:var(--rd-white); border-bottom-color:var(--rd-white); background:white;">
+                    <iframe id="run-output-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-pointer-lock allow-downloads" style="width:100%; height:320px; border:none; display:block;"></iframe>
+                </div>
+                <pre id="run-output-text" style="display:none; background:#000; color:#33ff33; padding:8px; height:280px; overflow:auto; font-family: var(--font-fixed); font-size:12px; white-space:pre-wrap; border:1px solid var(--rd-dark); border-right-color:var(--rd-white); border-bottom-color:var(--rd-white);"></pre>
+            </div>
+            <div class="dialog-footer">
+                <div class="btn-action" onclick="runActiveFile()">Run Again</div>
+                <div class="btn-action" onclick="closeModal()">Close</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        // --- DATA ---
+        const NEUROCHAT_SOURCE = `#!/usr/bin/env python3
+"""
+NeuroChat - Single-file self-learning CMD AI chatbot.
+Runs inside RetroDev 98's Pyodide CMD. numpy is pre-loaded by the host.
+"""
+
+import os, sys, json, math, random, re, time, pickle, hashlib, textwrap
+from collections import defaultdict, deque
+from difflib import SequenceMatcher
+
+try:
+    import numpy as np
+except ImportError:
+    if sys.platform == "emscripten":
+        import micropip
+        try:
+            await micropip.install("numpy")
+        except Exception:
+            import pyodide_js
+            await pyodide_js.loadPackage("numpy")
+        import numpy as np
+    else:
+        import subprocess
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "numpy", "-q"])
+        import numpy as np
+
+try:
+    import requests
+except ImportError:
+    requests = None
+
+try:
+    _THIS_FILE = os.path.abspath(__file__)
+except NameError:
+    _THIS_FILE = os.path.join(os.getcwd(), "neurochat.py")
+_BRAIN_DIR = os.path.dirname(_THIS_FILE) or os.getcwd()
+
+BRAIN_FILE = os.path.join(_BRAIN_DIR, "neurochat_brain.pkl")
+LLM_API_KEY = os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_API_KEY")
+LLM_BASE = os.environ.get("LLM_BASE_URL", "https://api.openai.com/v1")
+LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-4o-mini")
+
+def norm(s: str) -> str:
+    return re.sub(r"\\s+", " ", re.sub(r"[^\\w\\s']", " ", s.lower())).strip()
+
+def tokens(s: str):
+    return norm(s).split()
+
+def similarity(a: str, b: str) -> float:
+    return SequenceMatcher(None, norm(a), norm(b)).ratio()
+
+class TinyNet:
+    def __init__(self, n_in, n_hidden, n_out, lr=0.05):
+        self.lr = lr
+        self.W1 = np.random.randn(n_in, n_hidden) * 0.1
+        self.b1 = np.zeros(n_hidden)
+        self.W2 = np.random.randn(n_hidden, n_out) * 0.1
+        self.b2 = np.zeros(n_out)
+
+    def forward(self, x):
+        h = np.tanh(x @ self.W1 + self.b1)
+        y = h @ self.W2 + self.b2
+        return h, y
+
+    def softmax(self, y):
+        y = y - np.max(y)
+        e = np.exp(y)
+        return e / (e.sum() + 1e-9)
+
+    def predict(self, x):
+        _, y = self.forward(x)
+        return self.softmax(y)
+
+    def train_step(self, x, target_idx):
+        h, y = self.forward(x)
+        p = self.softmax(y)
+        dy = p.copy(); dy[target_idx] -= 1.0
+        dW2 = np.outer(h, dy); db2 = dy
+        dh = (dy @ self.W2.T) * (1 - h * h)
+        dW1 = np.outer(x, dh); db1 = dh
+        self.W1 -= self.lr * dW1; self.b1 -= self.lr * db1
+        self.W2 -= self.lr * dW2; self.b2 -= self.lr * db2
+        return float(-np.log(p[target_idx] + 1e-9))
+
+    def state(self):
+        return {k: v.tolist() for k, v in self.__dict__.items() if isinstance(v, np.ndarray)}
+
+    def load(self, st):
+        for k, v in st.items():
+            setattr(self, k, np.array(v))
+
+class Brain:
+    def __init__(self):
+        self.vocab = {}
+        self.intents = []
+        self.intent_index = {}
+        self.patterns = defaultdict(list)
+        self.responses = defaultdict(list)
+        self.context = deque(maxlen=12)
+        self.long_term = defaultdict(list)
+        self.history = deque(maxlen=500)
+        self.net = None
+        self.EMB_DIM = 256
+        self.turn_count = 0
+
+    def _ensure_vocab(self, word):
+        if word not in self.vocab:
+            self.vocab[word] = len(self.vocab)
+
+    def vectorize(self, text: str):
+        v = np.zeros(self.EMB_DIM, dtype=np.float32)
+        toks = tokens(text)
+        if not toks: return v
+        for t in toks:
+            self._ensure_vocab(t)
+            h = int(hashlib.md5(t.encode()).hexdigest(), 16)
+            v[h % self.EMB_DIM] += 1.0
+            v[(h >> 8) % self.EMB_DIM] += 0.5
+        for a, b in zip(toks, toks[1:]):
+            h = int(hashlib.md5((a + "_" + b).encode()).hexdigest(), 16)
+            v[h % self.EMB_DIM] += 1.0
+        n = np.linalg.norm(v)
+        return v / n if n > 0 else v
+
+    def add_intent(self, name):
+        if name not in self.intent_index:
+            self.intent_index[name] = len(self.intents)
+            self.intents.append(name)
+            self._rebuild_net()
+
+    def _rebuild_net(self):
+        n_out = max(1, len(self.intents))
+        self.net = TinyNet(self.EMB_DIM, 64, n_out, lr=0.08)
+
+    def ensure_net(self):
+        if self.net is None or self.net.W2.shape[1] != max(1, len(self.intents)):
+            self._rebuild_net()
+
+    def learn(self, user_text, intent, response):
+        self.add_intent(intent)
+        self.ensure_net()
+        self.patterns[intent].append(user_text)
+        if response and response not in self.responses[intent]:
+            self.responses[intent].append(response)
+        x = self.vectorize(user_text)
+        idx = self.intent_index[intent]
+        for _ in range(8):
+            self.net.train_step(x, idx)
+        self.turn_count += 1
+        self.history.append({"u": user_text, "i": intent, "r": response, "t": time.time()})
+
+    def classify(self, text):
+        self.ensure_net()
+        if not self.intents:
+            return None, 0.0
+        x = self.vectorize(text)
+        p = self.net.predict(x)
+        i = int(np.argmax(p))
+        return self.intents[i], float(p[i])
+
+    def best_pattern_match(self, text, threshold=0.55):
+        best, score = None, 0.0
+        for intent, examples in self.patterns.items():
+            for ex in examples[-200:]:
+                s = similarity(text, ex)
+                if s > score:
+                    best, score = intent, s
+        return best, score
+
+    def respond(self, text):
+        intent, score = self.best_pattern_match(text)
+        if intent and score >= 0.75:
+            return self._pick_response(intent), intent, score, "pattern"
+        n_intent, conf = self.classify(text)
+        if n_intent and conf >= 0.45:
+            return self._pick_response(n_intent), n_intent, conf, "neural"
+        if intent and score >= 0.55:
+            return self._pick_response(intent), intent, score, "fuzzy"
+        return None, None, 0.0, "unknown"
+
+    def _pick_response(self, intent):
+        rs = self.responses.get(intent) or ["I'm not sure what to say."]
+        return random.choice(rs)
+
+    def save(self):
+        st = {
+            "vocab": self.vocab, "intents": self.intents,
+            "intent_index": self.intent_index,
+            "patterns": dict(self.patterns),
+            "responses": dict(self.responses),
+            "long_term": dict(self.long_term),
+            "history": list(self.history),
+            "turn_count": self.turn_count,
+            "net": self.net.state() if self.net else None,
+        }
+        try:
+            with open(BRAIN_FILE, "wb") as f:
+                pickle.dump(st, f)
+            return True
+        except Exception as e:
+            print(f"[brain save failed: {e}]")
+            return False
+
+    def load(self):
+        if not os.path.exists(BRAIN_FILE): return False
+        try:
+            with open(BRAIN_FILE, "rb") as f:
+                st = pickle.load(f)
+            self.vocab = st["vocab"]; self.intents = st["intents"]
+            self.intent_index = st["intent_index"]
+            self.patterns = defaultdict(list, st["patterns"])
+            self.responses = defaultdict(list, st["responses"])
+            self.long_term = defaultdict(list, st["long_term"])
+            self.history = deque(st["history"], maxlen=500)
+            self.turn_count = st.get("turn_count", 0)
+            self._rebuild_net()
+            if st.get("net"): self.net.load(st["net"])
+            return True
+        except Exception as e:
+            print(f"[brain load failed: {e}]")
+            return False
+
+def llm_query(prompt: str, context: list):
+    if not (requests and LLM_API_KEY): return None
+    try:
+        msgs = [{"role": "system", "content": "You are NeuroChat, a concise, helpful assistant."}]
+        for u, a in context[-6:]:
+            msgs.append({"role": "user", "content": u})
+            msgs.append({"role": "assistant", "content": a})
+        msgs.append({"role": "user", "content": prompt})
+        r = requests.post(
+            f"{LLM_BASE}/chat/completions",
+            headers={"Authorization": f"Bearer {LLM_API_KEY}"},
+            json={"model": LLM_MODEL, "messages": msgs, "temperature": 0.7},
+            timeout=30,
+        )
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        return f"[LLM error: {e}]"
+
+TEACH_HELP = """\\
+Teach me with any of these:
+  /teach <intent> | <example user text> | <my reply>
+  /learn        - interactive intent builder
+  /facts key = value
+  /forget, /save, /load, /stats, /help, /quit
+"""
+
+class NeuroChat:
+    def __init__(self):
+        self.brain = Brain()
+        self.loaded = self.brain.load()
+        self.context = deque(maxlen=6)
+        self.seed_basics()
+
+    def seed_basics(self):
+        if self.brain.intents: return
+        seeds = {
+            "greeting": (["hi", "hello", "hey", "yo", "good morning", "good evening"],
+                         ["Hey there! What's on your mind?",
+                          "Hello! How can I help?",
+                          "Hi! What would you like to talk about?"]),
+            "farewell": (["bye", "goodbye", "see you", "later", "cya"],
+                         ["See you!", "Take care!", "Bye - come back soon."]),
+            "thanks": (["thanks", "thank you", "thx", "appreciate it"],
+                       ["Anytime!", "You're welcome.", "Happy to help."]),
+            "how_are_you": (["how are you", "how's it going", "how do you feel", "what's up"],
+                            ["Running fast and learning faster. You?",
+                             "Good - I get smarter each message. How about you?"]),
+            "identity": (["who are you", "what are you", "your name", "what is your name"],
+                         ["I'm NeuroChat - a self-learning local chatbot.",
+                          "NeuroChat, a tiny neural net that lives in this terminal."]),
+            "capabilities": (["what can you do", "help", "features"],
+                             ["I chat, learn from every message, remember facts, and can call an LLM if configured.",
+                              "Talk to me - I learn patterns, intents, and facts as we go."]),
+            "time": (["what time is it", "current time", "time"], ["__TIME__"]),
+            "date": (["what's the date", "today's date", "what day is it"], ["__DATE__"]),
+            "joke": (["tell me a joke", "make me laugh", "another joke"],
+                     ["Why did the neural net cross the road? To backpropagate to the other side.",
+                      "I told my optimizer a joke - it didn't converge on the punchline."]),
+        }
+        for intent, (exs, resps) in seeds.items():
+            for ex in exs:
+                self.brain.learn(ex, intent, None)
+            for r in resps:
+                self.brain.responses[intent].append(r)
+
+    def render(self, response: str) -> str:
+        if response == "__TIME__": return time.strftime("It's %H:%M:%S.")
+        if response == "__DATE__": return time.strftime("Today is %A, %B %d, %Y.")
+        return response
+
+    def run(self):
+        self.banner()
+        last_user, last_intent, last_reply = None, None, None
+        while True:
+            try:
+                user = input("you> ").strip()
+            except (EOFError, KeyboardInterrupt):
+                print("\\n[bye]"); self.brain.save(); break
+            if not user: continue
+
+            if user.startswith("/"):
+                if self.handle_command(user): continue
+                else: break
+
+            if last_intent and re.match(r"^(no|nope|wrong)[, ]+(say|respond|reply)\\s+(.+)", user, re.I):
+                m = re.match(r"^(no|nope|wrong)[, ]+(say|respond|reply)\\s+(.+)", user, re.I)
+                new_reply = m.group(3)
+                self.brain.responses[last_intent].append(new_reply)
+                self.brain.learn(last_user, last_intent, new_reply)
+                print(f"bot> Got it - I'll say \\"{new_reply}\\" next time.")
+                self.brain.save(); continue
+
+            if last_intent and re.match(r"^(that'?s? (wrong|incorrect)|nope|no)$", user, re.I):
+                try:
+                    new_reply = input("What should I have said? > ").strip()
+                except (EOFError, KeyboardInterrupt): new_reply = ""
+                if new_reply:
+                    self.brain.responses[last_intent].append(new_reply)
+                    self.brain.learn(last_user, last_intent, new_reply)
+                    print("bot> Learned. Thanks!")
+                    self.brain.save()
+                continue
+
+            self.extract_facts(user)
+            t0 = time.time()
+            reply, intent, conf, src = self.brain.respond(user)
+
+            if reply is None:
+                llm = llm_query(user, list(self.context))
+                if llm:
+                    reply = llm
+                    new_intent = f"llm_{self.brain.turn_count}"
+                    self.brain.learn(user, new_intent, reply)
+                    src = "llm"
+                else:
+                    reply = self.default_reply(user)
+                    self.brain.learn(user, "unknown", reply)
+                    src = "fallback"
+            else:
+                reply = self.render(reply)
+
+            dt = (time.time() - t0) * 1000
+            print(f"bot> {reply}")
+            print(f"   [{src} | intent={intent} | conf={conf:.2f} | {dt:.1f}ms | turns={self.brain.turn_count}]")
+
+            self.context.append((user, reply))
+            last_user, last_intent, last_reply = user, intent, reply
+
+            if self.brain.turn_count % 5 == 0:
+                self.brain.save()
+
+    def default_reply(self, user):
+        for k, vals in self.brain.long_term.items():
+            if k in norm(user) and vals:
+                return f"From memory: {k} = {vals[-1]}"
+        q = user.rstrip("?.!")
+        return (f"I don't have a good answer yet for \\"{q}\\". "
+                f"Teach me: /teach <intent> | {q} | <reply>")
+
+    def extract_facts(self, text):
+        m = re.match(r"(?:my name is|i am|i'm|call me)\\s+([A-Za-z][\\w'-]+)", text, re.I)
+        if m: self.brain.long_term["name"].append(m.group(1))
+        m = re.match(r"i (?:like|love)\\s+(.+)", text, re.I)
+        if m: self.brain.long_term["likes"].append(m.group(1).strip())
+        m = re.match(r"i (?:hate|dislike)\\s+(.+)", text, re.I)
+        if m: self.brain.long_term["dislikes"].append(m.group(1).strip())
+        m = re.match(r"(?:remember|note)\\s+(?:that\\s+)?(.+)", text, re.I)
+        if m: self.brain.long_term["notes"].append(m.group(1).strip())
+
+    def handle_command(self, user):
+        parts = user[1:].split(None, 1)
+        cmd = parts[0].lower() if parts else ""
+        arg = parts[1] if len(parts) > 1 else ""
+
+        if cmd in ("quit", "exit", "q"):
+            print("[bye]"); self.brain.save(); return False
+        if cmd == "help": print(TEACH_HELP); return True
+        if cmd == "save":
+            ok = self.brain.save()
+            print(f"[saved to {BRAIN_FILE}]" if ok else "[save failed]"); return True
+        if cmd == "load":
+            ok = self.brain.load(); print("[loaded]" if ok else "[no brain file]"); return True
+        if cmd == "stats":
+            b = self.brain
+            print(f"intents={len(b.intents)} patterns={sum(len(v) for v in b.patterns.values())} "
+                  f"responses={sum(len(v) for v in b.responses.values())} "
+                  f"turns={b.turn_count} vocab={len(b.vocab)} facts={dict(b.long_term)}")
+            return True
+        if cmd == "forget":
+            try:
+                c = input("Erase the brain? (yes/no) > ").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                c = "no"
+            if c == "yes":
+                try: os.remove(BRAIN_FILE)
+                except FileNotFoundError: pass
+                self.brain = Brain(); self.seed_basics()
+                print("[brain wiped]")
+            return True
+        if cmd == "facts":
+            if "=" in arg:
+                k, v = map(str.strip, arg.split("=", 1))
+                self.brain.long_term[k].append(v)
+                print(f"[fact] {k} = {v}")
+            else:
+                print(dict(self.brain.long_term))
+            return True
+        if cmd == "teach":
+            segs = [s.strip() for s in arg.split("|")]
+            if len(segs) < 2:
+                print("usage: /teach <intent> | <example text> | [optional reply]")
+                return True
+            intent, example = segs[0], segs[1]
+            reply = segs[2] if len(segs) > 2 else None
+            self.brain.learn(example, intent, reply)
+            print(f"[learned] intent='{intent}' example='{example}'")
+            if reply: print(f"[reply] {reply}")
+            return True
+        if cmd == "learn":
+            self.interactive_learn(); return True
+        print(f"unknown command: /{cmd}"); return True
+
+    def interactive_learn(self):
+        print("Interactive learning. Enter blank intent to stop.")
+        while True:
+            try:
+                intent = input("intent name > ").strip()
+            except (EOFError, KeyboardInterrupt):
+                break
+            if not intent: break
+            while True:
+                try:
+                    ex = input("example user text (blank=done) > ").strip()
+                except (EOFError, KeyboardInterrupt):
+                    break
+                if not ex: break
+                try:
+                    rep = input("your reply > ").strip()
+                except (EOFError, KeyboardInterrupt):
+                    rep = ""
+                self.brain.learn(ex, intent, rep or None)
+                if rep: self.brain.responses[intent].append(rep)
+            print(f"[intent '{intent}' stored]")
+        self.brain.save()
+
+    def banner(self):
+        loaded = "loaded from disk" if self.loaded else "fresh brain"
+        llm = "ON" if (LLM_API_KEY and requests) else "off (set OPENAI_API_KEY to enable)"
+        print(textwrap.dedent(f"""
+        ==================================================
+                   NeuroChat - self-learning CMD AI
+        ==================================================
+        brain: {loaded} | turns: {self.brain.turn_count} | LLM fallback: {llm}
+        type /help for commands. Talk normally to train me.
+        """))
+
+if __name__ == "__main__":
+    NeuroChat().run()
+`;
+
+        let appData = JSON.parse(localStorage.getItem('rd98_pro_final_v8')) || {
+            files: [
+                { id: 'f1', name: 'SRC', type: 'folder', parent: null, expanded: true },
+                { id: '1', name: 'MAIN.PY', type: 'file', parent: 'f1', content: 'import numpy as np\nprint("numpy works! version:", np.__version__)\nprint("Try Tools > Command Prompt, then: PIP INSTALL requests")\nprint("Press F2 to rename files. Right-click the tree for Rename.")' },
+                { id: '2', name: 'NEUROCHAT.PY', type: 'file', parent: 'f1', content: NEUROCHAT_SOURCE }
+            ],
+            activeId: '1',
+            tabs: ['1'],
+            viewMode: 'desktop',
+            findState: { index: -1, lastFind: '' }
+        };
+
+        const tips = [
+            "Use Ctrl+S to save instantly.",
+            "Open Tools > Command Prompt to run real Python with pip.",
+            "Press F2 to rename the selected file or folder.",
+            "Right-click a file in the tree to rename, delete, or download as ZIP.",
+            "Try: PIP INSTALL requests — then import it in a .py file.",
+            "numpy is pre-loaded — 'import numpy' just works.",
+            "In the CMD, Ctrl+C cancels the current line or command.",
+            "Check the View menu for Fixedsys font.",
+            "Use Ctrl+F to find text.",
+            "Run NEUROCHAT.PY with F5 to chat with a self-learning bot.",
+            "Drag and drop files in the tree to move them between folders.",
+            "Long-press (5s) on mobile to open the context menu."
+        ];
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playClick() {
+            try {
+                const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+                o.type = 'square'; o.frequency.setValueAtTime(150, audioCtx.currentTime);
+                g.gain.setValueAtTime(0.05, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+                o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 0.05);
+            } catch(e) {}
+        }
+
+        const treeEl = document.getElementById('tree-view');
+        const tabEl = document.getElementById('tab-strip');
+        const editorEl = document.getElementById('code-editor');
+        const lineEl = document.getElementById('line-nums');
+        const statusEl = document.getElementById('status-msg');
+        const cursorEl = document.getElementById('cursor-info');
+        const appWindow = document.getElementById('app-window');
+        const ctxMenu = document.getElementById('context-menu');
+        const taskbarItem = document.getElementById('taskbar-item');
+        const taskbarTerm = document.getElementById('taskbar-term');
+        const startMenu = document.getElementById('start-menu');
+
+        // --- UNDO STACK ---
+        let undoStack = [];
+        let undoIndex = -1;
+        const MAX_UNDO = 50;
+
+        function pushUndo(content) {
+            if (undoIndex < undoStack.length - 1) {
+                undoStack = undoStack.slice(0, undoIndex + 1);
+            }
+            undoStack.push(content);
+            if (undoStack.length > MAX_UNDO) undoStack.shift();
+            undoIndex = undoStack.length - 1;
+        }
+
+        function undoAction() {
+            if (undoIndex > 0) {
+                undoIndex--;
+                editorEl.value = undoStack[undoIndex];
+                editorEl.dispatchEvent(new Event('input'));
+                statusEl.textContent = "Undo executed.";
+                playClick();
+            } else {
+                statusEl.textContent = "Nothing to undo.";
+            }
+        }
+
+        // --- MOBILE LONG PRESS CONTEXT MENU ---
+        let longPressTimer = null;
+        let longPressTarget = null;
+
+        function startLongPress(e, mode) {
+            clearLongPress();
+            longPressTarget = { x: e.touches ? e.touches[0].clientX : e.clientX, y: e.touches ? e.touches[0].clientY : e.clientY, mode };
+            longPressTimer = setTimeout(() => {
+                if (longPressTarget) {
+                    // Simulate context menu
+                    const syntheticEvent = {
+                        preventDefault: () => {},
+                        stopPropagation: () => {},
+                        pageX: longPressTarget.x,
+                        pageY: longPressTarget.y,
+                        clientX: longPressTarget.x,
+                        clientY: longPressTarget.y,
+                        target: e.target
+                    };
+                    showContextMenu(syntheticEvent, longPressTarget.mode);
+                    longPressTarget = null;
+                    // Haptic feedback if available
+                    if (navigator.vibrate) navigator.vibrate(20);
+                }
+            }, 5000);
+        }
+
+        function clearLongPress() {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+        }
+
+        document.addEventListener('touchstart', (e) => {
+            // Long press on tree sidebar
+            if (e.target.closest('.tree-line') || e.target.closest('#tree-view')) {
+                const line = e.target.closest('.tree-line');
+                if (line) {
+                    const fileId = line.dataset.fileId;
+                    if (fileId) {
+                        const item = appData.files.find(f => f.id === fileId);
+                        if (item) selectItem(fileId, true);
+                    }
+                }
+                startLongPress(e, 'tree');
+            } else if (e.target.closest('#code-editor')) {
+                startLongPress(e, 'editor');
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchend', clearLongPress);
+        document.addEventListener('touchmove', clearLongPress);
+        document.addEventListener('touchcancel', clearLongPress);
+
+        // Prevent context menu on long press for touch devices
+        document.addEventListener('contextmenu', (e) => {
+            if (e.target.closest('.tree-line') || e.target.closest('#code-editor')) {
+                e.preventDefault();
+            }
+        });
+
+        // --- DRAG AND DROP ---
+        let draggedItemId = null;
+
+        function makeDraggable(div, item) {
+            div.draggable = true;
+            div.addEventListener('dragstart', (e) => {
+                draggedItemId = item.id;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', item.id);
+                div.style.opacity = '0.5';
+            });
+            div.addEventListener('dragend', (e) => {
+                div.style.opacity = '1';
+                draggedItemId = null;
+                document.querySelectorAll('.tree-line').forEach(el => el.classList.remove('tree-dragover'));
+            });
+            div.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (item.type === 'folder') {
+                    div.classList.add('tree-dragover');
+                }
+            });
+            div.addEventListener('dragleave', (e) => {
+                div.classList.remove('tree-dragover');
+            });
+            div.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                div.classList.remove('tree-dragover');
+                const sourceId = e.dataTransfer.getData('text/plain');
+                if (!sourceId || sourceId === item.id) return;
+                const source = appData.files.find(f => f.id === sourceId);
+                if (!source) return;
+                // Prevent moving a folder into its own descendant
+                if (source.type === 'folder') {
+                    let check = item;
+                    while (check) {
+                        if (check.id === source.id) {
+                            statusEl.textContent = "Cannot move a folder into itself.";
+                            return;
+                        }
+                        check = appData.files.find(f => f.id === check.parent);
+                    }
+                }
+                // Move: set parent to target folder (or null if dropping on root area)
+                const newParent = item.type === 'folder' ? item.id : item.parent;
+                source.parent = newParent;
+                if (item.type === 'folder') item.expanded = true;
+                renderTree();
+                saveData(true);
+                statusEl.textContent = `Moved "${source.name}" into "${item.name}".`;
+                playClick();
+            });
+        }
+
+        // --- INIT ---
+        function init() {
+            pushUndo(editorEl.value || '');
+            renderTree(); renderTabs(); syncEditor();
+            editorEl.addEventListener('input', () => {
+                const item = appData.files.find(f => f.id === appData.activeId);
+                if (item) {
+                    item.content = editorEl.value;
+                    if (undoStack[undoIndex] !== editorEl.value) {
+                        if (undoIndex < undoStack.length - 1) {
+                            undoStack = undoStack.slice(0, undoIndex + 1);
+                        }
+                        pushUndo(editorEl.value);
+                    }
+                }
+                updateLineNums(); saveData(true);
+            });
+            editorEl.addEventListener('keyup', updateCursor);
+            editorEl.addEventListener('click', updateCursor);
+            editorEl.addEventListener('scroll', () => lineEl.scrollTop = editorEl.scrollTop);
+
+            window.addEventListener('keydown', (e) => {
+                const ctrl = e.ctrlKey || e.metaKey;
+                const key = e.key.toLowerCase();
+                const activeEl = document.activeElement;
+                const dialogOpen = document.getElementById('modal-overlay').style.display === 'flex';
+                const inTextField = !!activeEl && (activeEl.tagName === 'INPUT' || (activeEl.tagName === 'TEXTAREA' && activeEl.id !== 'code-editor'));
+                const inTerminal = activeEl && activeEl.id === 'terminal-input';
+
+                if (inTerminal) return;
+
+                if (e.key === 'Enter' && dialogOpen && (!activeEl || activeEl.tagName !== 'TEXTAREA')) {
+                    e.preventDefault();
+                    triggerDialogEnter();
+                    return;
+                }
+
+                if (e.key === 'F5') {
+                    e.preventDefault();
+                    if (!dialogOpen) runActiveFile();
+                    return;
+                }
+
+                if (e.key === 'F2') {
+                    e.preventDefault();
+                    if (!dialogOpen) renameCurrent();
+                    return;
+                }
+
+                if (ctrl) {
+                    if (inTextField) return;
+                    switch(key) {
+                        case 's': e.preventDefault(); saveProject(); break;
+                        case 'p': e.preventDefault(); exportFile(); break;
+                        case 'z': e.preventDefault(); undoAction(); break;
+                        case 'a': e.preventDefault(); selectAllText(); break;
+                        case 'c': e.preventDefault(); copyText(); break;
+                        case 'v': e.preventDefault(); pasteText(); break;
+                        case 'f': e.preventDefault(); showFindDialog(); break;
+                        case 'h': e.preventDefault(); showReplaceDialog(); break;
+                        default: break;
+                    }
+                    return;
+                }
+
+                if (!dialogOpen && !inTextField && activeEl !== editorEl) {
+                    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        navigateTree(e.key === 'ArrowDown' ? 1 : -1);
+                    } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                        const item = appData.files.find(f => f.id === appData.activeId);
+                        if (item && item.type === 'folder') {
+                            e.preventDefault();
+                            if (e.key === 'ArrowRight' && item.expanded === false) toggleFolder(item.id);
+                            if (e.key === 'ArrowLeft' && item.expanded !== false) toggleFolder(item.id);
+                        }
+                    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                        const item = appData.files.find(f => f.id === appData.activeId);
+                        if (item) { e.preventDefault(); deleteCurrent(); }
+                    } else if (e.key === 'Enter') {
+                        const item = appData.files.find(f => f.id === appData.activeId);
+                        if (item && item.type === 'file') { e.preventDefault(); focusEditorAtEnd(); }
+                    }
+                }
+            });
+
+            function getOpenDialogId() {
+                const ids = ['input-dialog', 'tip-dialog', 'about-dialog', 'find-dialog', 'confirm-dialog', 'run-dialog'];
+                for (const id of ids) {
+                    const el = document.getElementById(id);
+                    if (el && el.style.display === 'block') return id;
+                }
+                return null;
+            }
+
+            function triggerDialogEnter() {
+                const id = getOpenDialogId();
+                if (id === 'input-dialog') document.getElementById('diag-ok').click();
+                else if (id === 'find-dialog') findText();
+                else if (id === 'confirm-dialog') document.getElementById('confirm-ok').click();
+                else if (id === 'tip-dialog' || id === 'about-dialog' || id === 'run-dialog') closeModal();
+            }
+
+            function getVisibleTreeItems() {
+                const items = [];
+                function walk(parentId) {
+                    appData.files.filter(f => f.parent === parentId).forEach(f => {
+                        items.push(f.id);
+                        if (f.type === 'folder' && f.expanded !== false) {
+                            walk(f.id);
+                        }
+                    });
+                }
+                walk(null);
+                return items;
+            }
+
+            function navigateTree(direction) {
+                const items = getVisibleTreeItems();
+                if (items.length === 0) return;
+                let idx = items.indexOf(appData.activeId);
+                idx = idx === -1 ? 0 : Math.min(items.length - 1, Math.max(0, idx + direction));
+                selectItem(items[idx], true);
+                playClick();
+                const activeLine = treeEl.querySelector('.tree-line.active');
+                if (activeLine) activeLine.scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        function focusEditorAtEnd() {
+            editorEl.focus();
+            const length = editorEl.value.length;
+            editorEl.setSelectionRange(length, length);
+            editorEl.scrollTop = editorEl.scrollHeight;
+            updateCursor();
+        }
+
+        function updateLineNums() {
+            const count = editorEl.value.split('\n').length;
+            let h = '';
+            for(let i=1; i<=count; i++) {
+                h += `<span data-line="${i}" onclick="selectLine(${i})">${i}</span><br>`;
+            }
+            lineEl.innerHTML = h;
+        }
+
+        function selectLine(lineNum) {
+            const lines = editorEl.value.split('\n');
+            let start = 0;
+            for (let i = 0; i < lineNum - 1 && i < lines.length; i++) {
+                start += lines[i].length + 1;
+            }
+            const end = start + (lines[lineNum-1] || '').length;
+            editorEl.focus();
+            editorEl.setSelectionRange(start, end);
+            statusEl.textContent = `Selected line ${lineNum}`;
+            playClick();
+        }
+
+        function renderTree() {
+            treeEl.innerHTML = '';
+            function renderLevel(parentId) {
+                const items = appData.files.filter(f => f.parent === parentId);
+                items.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = `tree-line ${appData.activeId === item.id ? 'active' : ''}`;
+                    div.dataset.fileId = item.id;
+                    div.style.paddingLeft = (parentId ? '16px' : '4px');
+
+                    if (item.type === 'folder') {
+                        const toggle = document.createElement('span');
+                        toggle.className = 'tree-folder-toggle';
+                        toggle.textContent = item.expanded !== false ? '−' : '+';
+                        toggle.onclick = (e) => {
+                            e.stopPropagation();
+                            toggleFolder(item.id);
+                            playClick();
+                        };
+                        div.appendChild(toggle);
+                        const icon = document.createElement('span');
+                        icon.textContent = '📁 ';
+                        icon.style.fontSize = '12px';
+                        div.appendChild(icon);
+                        const textSpan = document.createElement('span');
+                        textSpan.className = 'tree-text';
+                        textSpan.textContent = item.name;
+                        div.appendChild(textSpan);
+                        div.onclick = (e) => {
+                            if (e.target !== toggle) {
+                                selectItem(item.id);
+                                playClick();
+                            }
+                        };
+                        makeDraggable(div, item);
+                    } else {
+                        const icon = document.createElement('span');
+                        icon.textContent = '📄 ';
+                        icon.style.fontSize = '12px';
+                        div.appendChild(icon);
+                        const textSpan = document.createElement('span');
+                        textSpan.className = 'tree-text';
+                        textSpan.textContent = item.name;
+                        div.appendChild(textSpan);
+                        div.onclick = (e) => { e.stopPropagation(); selectItem(item.id); playClick(); };
+                        makeDraggable(div, item);
+                    }
+
+                    treeEl.appendChild(div);
+
+                    if (item.type === 'folder' && item.expanded !== false) {
+                        renderLevel(item.id);
+                    }
+                });
+            }
+            renderLevel(null);
+        }
+
+        function toggleFolderAndRefresh() {
+            const item = appData.files.find(f => f.id === appData.activeId);
+            if (item && item.type === 'folder') {
+                toggleFolder(item.id);
+            } else {
+                statusEl.textContent = "Select a folder to collapse/expand.";
+            }
+        }
+
+        function toggleFolder(id) {
+            const folder = appData.files.find(f => f.id === id);
+            if (!folder || folder.type !== 'folder') return;
+            folder.expanded = !folder.expanded;
+            renderTree();
+            saveData(true);
+        }
+
+        function renderTabs() {
+            tabEl.innerHTML = '';
+            appData.tabs.forEach(id => {
+                const item = appData.files.find(f => f.id === id);
+                if (!item) return;
+                const div = document.createElement('div');
+                div.className = `tab ${id === appData.activeId ? 'active' : ''}`;
+                div.innerHTML = `${item.name} <span class="tab-close" onclick="closeTab(event, '${id}')">✕</span>`;
+                div.onclick = () => { selectItem(id); playClick(); };
+                tabEl.appendChild(div);
+            });
+        }
+
+        function selectItem(id, keepFocus = false) {
+            const item = appData.files.find(f => f.id === id);
+            if (!item) return;
+            appData.activeId = id;
+            if (item.type === 'file' && !appData.tabs.includes(id)) appData.tabs.push(id);
+            renderTree(); renderTabs(); syncEditor(keepFocus);
+            taskbarItem.textContent = "RETRODEV 98 - " + item.name;
+        }
+
+        function syncEditor(keepFocus = false) {
+            const item = appData.files.find(f => f.id === appData.activeId);
+            if (item && item.type === 'file') {
+                editorEl.value = item.content || '';
+                editorEl.disabled = false;
+                undoStack = [editorEl.value];
+                undoIndex = 0;
+                updateLineNums();
+                statusEl.textContent = `Active: ${item.name}`;
+                if (!keepFocus) focusEditorAtEnd();
+                else updateCursor();
+            } else {
+                editorEl.value = '';
+                editorEl.disabled = true;
+                statusEl.textContent = 'Directory Mode.';
+            }
+        }
+
+        function saveData(silent = false) {
+            localStorage.setItem('rd98_pro_final_v8', JSON.stringify(appData));
+            if(!silent) { statusEl.textContent = "Workspace persistent."; playClick(); }
+        }
+
+        // --- DOWNLOAD FOLDER AS ZIP ---
+        function downloadCurrentFolder() {
+            const item = appData.files.find(f => f.id === appData.activeId);
+            if (!item) {
+                statusEl.textContent = "Select a folder or file first.";
+                return;
+            }
+            // Determine the folder to download
+            let folderId = null;
+            if (item.type === 'folder') {
+                folderId = item.id;
+            } else if (item.parent) {
+                folderId = item.parent;
+            }
+            if (!folderId) {
+                statusEl.textContent = "No folder context. Select a file inside a folder.";
+                return;
+            }
+            const folder = appData.files.find(f => f.id === folderId);
+            if (!folder) return;
+
+            const zip = new JSZip();
+            const folderPath = getFolderPath(folderId);
+            const rootFolder = zip.folder(folder.name);
+
+            // Recursively add files
+            function addFiles(parentId, currentFolder) {
+                const items = appData.files.filter(f => f.parent === parentId);
+                items.forEach(f => {
+                    if (f.type === 'folder') {
+                        const subFolder = currentFolder.folder(f.name);
+                        addFiles(f.id, subFolder);
+                    } else {
+                        currentFolder.file(f.name, f.content || '');
+                    }
+                });
+            }
+            addFiles(folderId, rootFolder);
+
+            zip.generateAsync({ type: 'blob' }).then((blob) => {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = folder.name + '.zip';
+                a.click();
+                URL.revokeObjectURL(a.href);
+                statusEl.textContent = `Downloaded "${folder.name}" as ZIP.`;
+                playClick();
+            }).catch((err) => {
+                statusEl.textContent = "Error creating ZIP: " + err.message;
+            });
+        }
+
+        // --- SAVE PROJECT (WHOLE WORKSPACE) ---
+        function saveProject() {
+            const item = appData.files.find(f => f.id === appData.activeId);
+            if (item && item.type === 'file') {
+                item.content = editorEl.value;
+            }
+            saveData(true);
+
+            const zip = new JSZip();
+
+            function addAll(parentId, currentFolder) {
+                const items = appData.files.filter(f => f.parent === parentId);
+                items.forEach(f => {
+                    if (f.type === 'folder') {
+                        const sub = currentFolder.folder(f.name);
+                        addAll(f.id, sub);
+                    } else {
+                        currentFolder.file(f.name, f.content || '');
+                    }
+                });
+            }
+            addAll(null, zip);
+
+            zip.generateAsync({ type: 'blob' }).then((blob) => {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'retrodev_project.zip';
+                a.click();
+                URL.revokeObjectURL(a.href);
+                statusEl.textContent = "Project downloaded as ZIP.";
+                playClick();
+            }).catch((err) => {
+                statusEl.textContent = "Error creating ZIP: " + err.message;
+            });
+        }
+
+        function getFolderPath(folderId) {
+            const parts = [];
+            let current = appData.files.find(f => f.id === folderId);
+            while (current) {
+                parts.unshift(current.name);
+                if (current.parent) {
+                    current = appData.files.find(f => f.id === current.parent);
+                } else {
+                    break;
+                }
+            }
+            return parts.join('/');
+        }
+
+        function copyText() {
+            const start = editorEl.selectionStart;
+            const end = editorEl.selectionEnd;
+            let text = (start === end) ? editorEl.value : editorEl.value.substring(start, end);
+            navigator.clipboard.writeText(text).then(() => {
+                statusEl.textContent = (start === end) ? "File copied." : "Selection copied.";
+                playClick(); closeMenus();
+            }).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                ta.remove();
+                statusEl.textContent = "Copied (fallback).";
+                playClick(); closeMenus();
+            });
+        }
+
+        async function pasteText() {
+            try {
+                const text = await navigator.clipboard.readText();
+                const start = editorEl.selectionStart;
+                const end = editorEl.selectionEnd;
+                const current = editorEl.value;
+                const newVal = current.substring(0, start) + text + current.substring(end);
+                editorEl.value = newVal;
+                editorEl.setSelectionRange(start + text.length, start + text.length);
+                editorEl.dispatchEvent(new Event('input'));
+                statusEl.textContent = "Clipboard pasted.";
+                playClick(); closeMenus();
+            } catch (e) {
+                editorEl.focus();
+                document.execCommand('paste');
+                statusEl.textContent = "Paste (fallback).";
+                playClick(); closeMenus();
+            }
+        }
+
+        function selectAllText() {
+            editorEl.focus();
+            editorEl.select();
+            playClick();
+        }
+
+        function toggleViewMode() {
+            playClick();
+            appData.viewMode = (appData.viewMode === 'desktop' ? 'mobile' : 'desktop');
+            appWindow.classList.toggle('mobile-view', appData.viewMode === 'mobile');
+        }
+
+        function minimizeWindow() {
+            playClick();
+            appWindow.classList.add('minimized');
+            taskbarItem.classList.remove('active');
+        }
+
+        function restoreWindow() {
+            playClick();
+            appWindow.classList.remove('minimized');
+            taskbarItem.classList.add('active');
+            focusEditorAtEnd();
+        }
+
+        function toggleMaximize() {
+            playClick();
+            if (appData.viewMode === 'mobile') {
+                toggleViewMode();
+            } else {
+                if (appWindow.style.width === '100%' || appWindow.style.width === '100vw') {
+                    appWindow.style.width = '98vw';
+                    appWindow.style.height = '94vh';
+                } else {
+                    appWindow.style.width = '100%';
+                    appWindow.style.height = '100%';
+                }
+                statusEl.textContent = "Window toggled.";
+            }
+        }
+
+        function closeApp() {
+            showConfirm("Exit RetroDev 98", "Are you sure you want to exit RetroDev 98?", () => {
+                document.body.innerHTML = "<div style='color:white; padding:40px; font-family:monospace;'>System Shutdown.</div>";
+            });
+        }
+
+        function showConfirm(title, message, cb) {
+            closeModal();
+            document.getElementById('modal-overlay').style.display = 'flex';
+            document.getElementById('confirm-dialog').style.display = 'block';
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+            document.getElementById('confirm-ok').onclick = () => { closeModal(); cb(); };
+            setTimeout(() => document.getElementById('confirm-ok').focus(), 50);
+        }
+
+        function showAbout() {
+            closeModal();
+            document.getElementById('modal-overlay').style.display = 'flex';
+            document.getElementById('about-dialog').style.display = 'block';
+        }
+
+        function showTip() {
+            closeModal();
+            document.getElementById('modal-overlay').style.display = 'flex';
+            document.getElementById('tip-dialog').style.display = 'block';
+            document.getElementById('tip-content').textContent = tips[Math.floor(Math.random()*tips.length)];
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').style.display = 'none';
+            document.querySelectorAll('.dialog').forEach(d => d.style.display = 'none');
+            treeEl.querySelectorAll('.tree-line').forEach(el => el.classList.remove('rd-name-match'));
+        }
+
+        function openMenu(e, id) {
+            e.stopPropagation();
+            closeMenus();
+            playClick();
+            document.getElementById(id).style.display = 'flex';
+            e.target.classList.add('active');
+        }
+
+        function closeMenus() {
+            document.querySelectorAll('.dropdown').forEach(d => {
+                if (d.id !== 'context-menu' && d.id !== 'start-menu') d.style.display = 'none';
+            });
+            document.querySelectorAll('.menu-trigger').forEach(m => m.classList.remove('active'));
+            ctxMenu.style.display = 'none';
+            startMenu.style.display = 'none';
+        }
+
+        function showContextMenu(e, mode) {
+            e.preventDefault();
+            e.stopPropagation();
+            playClick();
+            ctxMenu.style.display = 'block';
+            const pageX = e.pageX || e.clientX || 100;
+            const pageY = e.pageY || e.clientY || 100;
+            ctxMenu.style.left = Math.min(pageX, window.innerWidth - 200) + 'px';
+            ctxMenu.style.top = Math.min(pageY, window.innerHeight - 200) + 'px';
+            document.getElementById('ctx-tree-opts').style.display = mode === 'tree' ? 'block' : 'none';
+            document.getElementById('ctx-editor-opts').style.display = mode === 'editor' ? 'block' : 'none';
+            clearLongPress();
+        }
+
+        function toggleFont(type) {
+            document.body.classList.toggle('fixedsys-mode');
+            playClick();
+        }
+
+        function updateCursor() {
+            const pos = editorEl.selectionStart;
+            const lines = editorEl.value.substring(0, pos).split('\n');
+            cursorEl.textContent = `Ln ${lines.length}, Col ${lines[lines.length-1].length + 1}`;
+        }
+
+        function promptNewFile() {
+            const current = appData.files.find(f => f.id === appData.activeId);
+            const parentId = current && current.type === 'folder' ? appData.activeId : (current ? current.parent : null);
+            showPrompt("New File", "Enter Filename:", "SCRIPT.PY", (val) => {
+                if (!val) return;
+                const id = Date.now().toString();
+                appData.files.push({ id, name: val, type: 'file', parent: parentId, content: '' });
+                if (parentId) {
+                    const parent = appData.files.find(f => f.id === parentId);
+                    if (parent) parent.expanded = true;
+                }
+                selectItem(id);
+                saveData();
+            });
+        }
+
+        function promptNewFolder() {
+            const current = appData.files.find(f => f.id === appData.activeId);
+            const parentId = current && current.type === 'folder' ? appData.activeId : (current ? current.parent : null);
+            showPrompt("New Folder", "Folder Name:", "MOD_SRC", (val) => {
+                if (!val) return;
+                const id = Date.now().toString();
+                appData.files.push({ id, name: val, type: 'folder', parent: parentId, expanded: true });
+                if (parentId) {
+                    const parent = appData.files.find(f => f.id === parentId);
+                    if (parent) parent.expanded = true;
+                }
+                renderTree();
+                saveData();
+            });
+        }
+
+        // --- RENAME ---
+        function renameCurrent() {
+            const item = appData.files.find(f => f.id === appData.activeId);
+            if (!item) {
+                statusEl.textContent = "Nothing selected to rename.";
+                return;
+            }
+            closeMenus();
+            showPrompt(
+                item.type === 'folder' ? "Rename Folder" : "Rename File",
+                `Rename "${item.name}" to:`,
+                item.name,
+                (val) => {
+                    if (!val || val === item.name) return;
+                    const dup = appData.files.find(f =>
+                        f.id !== item.id &&
+                        f.parent === item.parent &&
+                        f.name.toLowerCase() === val.toLowerCase()
+                    );
+                    if (dup) {
+                        statusEl.textContent = `A file/folder named "${val}" already exists here.`;
+                        return;
+                    }
+                    const oldName = item.name;
+                    item.name = val;
+                    renderTree(); renderTabs(); saveData(true);
+                    if (appData.activeId === item.id) {
+                        taskbarItem.textContent = "RETRODEV 98 - " + val;
+                    }
+                    statusEl.textContent = `Renamed "${oldName}" → "${val}".`;
+                    playClick();
+                }
+            );
+        }
+
+        function collectIdsToDelete(id) {
+            const ids = [id];
+            const item = appData.files.find(f => f.id === id);
+            if (item && item.type === 'folder') {
+                appData.files.filter(f => f.parent === id).forEach(child => {
+                    ids.push(...collectIdsToDelete(child.id));
+                });
+            }
+            return ids;
+        }
+
+        function deleteCurrent() {
+            const item = appData.files.find(f => f.id === appData.activeId);
+            if (!item) return;
+            const idsToDelete = collectIdsToDelete(item.id);
+            const childCount = idsToDelete.length - 1;
+            const label = item.type === 'folder'
+                ? `the folder "${item.name}"${childCount > 0 ? ` and its ${childCount} item(s)` : ''}`
+                : `"${item.name}"`;
+            showConfirm("Confirm Delete", `Are you sure you want to delete ${label}? This cannot be undone.`, () => {
+                appData.files = appData.files.filter(f => !idsToDelete.includes(f.id));
+                appData.tabs = appData.tabs.filter(t => !idsToDelete.includes(t));
+                if (idsToDelete.includes(appData.activeId)) {
+                    appData.activeId = appData.tabs[0] || (appData.files[0] ? appData.files[0].id : null);
+                }
+                renderTree(); renderTabs(); syncEditor(); saveData();
+                statusEl.textContent = `Deleted ${label}.`;
+                playClick();
+            });
+        }
+
+        function exportFile() {
+            const item = appData.files.find(f => f.id === appData.activeId);
+            if (!item || item.type !== 'file') return;
+            const b = new Blob([item.content], {type: 'text/plain'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(b);
+            a.download = item.name;
+            a.click();
+            statusEl.textContent = "Exported " + item.name;
+            playClick();
+        }
+
+        // --- RUN ENGINE ---
+        function openRunDialog(title) {
+            closeModal();
+            document.getElementById('modal-overlay').style.display = 'flex';
+            document.getElementById('run-dialog').style.display = 'block';
+            document.getElementById('run-title').textContent = title;
+        }
+
+        function showRunFrame(title, srcdoc) {
+            openRunDialog(title);
+            document.getElementById('run-output-text').style.display = 'none';
+            document.getElementById('run-output-frame-wrap').style.display = 'block';
+            document.getElementById('run-output-frame').srcdoc = srcdoc;
+        }
+
+        function showRunText(title, text) {
+            openRunDialog(title);
+            document.getElementById('run-output-frame-wrap').style.display = 'none';
+            const pre = document.getElementById('run-output-text');
+            pre.style.display = 'block';
+            pre.textContent = text;
+        }
+
+        function runActiveFile() {
+            const item = appData.files.find(f => f.id === appData.activeId);
+            if (!item || item.type !== 'file') {
+                statusEl.textContent = "Select a file to run.";
+                playClick();
+                return;
+            }
+            item.content = editorEl.value;
+            saveData(true);
+            playClick();
+            const name = item.name.toUpperCase();
+            if (name.endsWith('.HTML') || name.endsWith('.HTM')) {
+                runHTML(item);
+            } else if (name.endsWith('.JS')) {
+                runJS(item);
+            } else if (name.endsWith('.PY')) {
+                runPython(item);
+            } else {
+                showRunText(`Run: ${item.name}`, `Cannot run "${item.name}".\n\nSupported file types: .html, .js, .py\nRename or export this file to run it in another tool.`);
+                statusEl.textContent = `Unsupported file type: ${item.name}`;
+            }
+        }
+
+        function runHTML(item) {
+            let html = item.content || '';
+            const siblings = appData.files.filter(f => f.type === 'file' && f.parent === item.parent && f.id !== item.id);
+            const jsFiles = siblings.filter(f => f.name.toUpperCase().endsWith('.JS'));
+            const cssFiles = siblings.filter(f => f.name.toUpperCase().endsWith('.CSS'));
+
+            if (!/<html[\s>]/i.test(html)) {
+                html = `<!DOCTYPE html><html><head></head><body>${html}</body></html>`;
+            }
+            let inject = '';
+            cssFiles.forEach(f => { inject += `<style>/* ${f.name} */\n${f.content || ''}\n</style>`; });
+            jsFiles.forEach(f => { inject += `<script>/* ${f.name} */\n${f.content || ''}\n<\/script>`; });
+
+            if (inject) {
+                if (/<\/head>/i.test(html)) html = html.replace(/<\/head>/i, inject + '</head>');
+                else if (/<\/body>/i.test(html)) html = html.replace(/<\/body>/i, inject + '</body>');
+                else html += inject;
+            }
+
+            showRunFrame(`Run: ${item.name}`, html);
+            const extra = (jsFiles.length || cssFiles.length) ? ` (bundled with ${jsFiles.length} JS + ${cssFiles.length} CSS sibling file(s))` : '';
+            statusEl.textContent = `Running ${item.name}${extra}.`;
+        }
+
+        function runJS(item) {
+            const output = [];
+            const origLog = console.log, origErr = console.error, origWarn = console.warn;
+            console.log = (...a) => output.push(a.map(v => typeof v === 'object' ? JSON.stringify(v) : String(v)).join(' '));
+            console.error = (...a) => output.push('[error] ' + a.map(String).join(' '));
+            console.warn = (...a) => output.push('[warn] ' + a.map(String).join(' '));
+            try {
+                const fn = new Function(item.content || '');
+                const result = fn();
+                if (result !== undefined) output.push('=> ' + String(result));
+            } catch (err) {
+                output.push('Uncaught: ' + err.message);
+            } finally {
+                console.log = origLog; console.error = origErr; console.warn = origWarn;
+            }
+            showRunText(`Run: ${item.name}`, output.length ? output.join('\n') : '(script ran with no console output)');
+            statusEl.textContent = `Finished running ${item.name}.`;
+        }
+
+        let pyodideInstance = null;
+        let pyodideLoading = null;
+        function loadScriptOnce(src) {
+            return new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = src;
+                s.onload = resolve;
+                s.onerror = () => reject(new Error('Could not load ' + src));
+                document.head.appendChild(s);
+            });
+        }
+
+        async function getPyodide() {
+            if (pyodideInstance) return pyodideInstance;
+            if (!pyodideLoading) {
+                pyodideLoading = (async () => {
+                    if (!window.loadPyodide) {
+                        await loadScriptOnce('https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js');
+                    }
+                    pyodideInstance = await loadPyodide({
+                        indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/'
+                    });
+                    await pyodideInstance.loadPackage(['micropip', 'numpy']);
+                    return pyodideInstance;
+                })();
+            }
+            return pyodideLoading;
+        }
+
+        async function runPython(item) {
+            showRunText(`Run: ${item.name}`, 'Loading Python runtime (first run only, may take a few seconds)...');
+            statusEl.textContent = "Loading Python runtime...";
+            try {
+                const pyodide = await getPyodide();
+                try {
+                    await pyodide.loadPackagesFromImports(item.content || '');
+                } catch (e) { /* non-fatal */ }
+                const output = [];
+                pyodide.setStdout({ batched: (s) => output.push(s) });
+                pyodide.setStderr({ batched: (s) => output.push(s) });
+                try {
+                    await pyodide.runPythonAsync(item.content || '', {
+                        globals: pyodide.toPy({
+                            __name__: '__main__',
+                            __file__: '/' + item.name
+                        })
+                    });
+                } catch (err) {
+                    output.push(String(err));
+                }
+                showRunText(`Run: ${item.name}`, output.length ? output.join('\n') : '(script ran with no output)');
+                statusEl.textContent = `Finished running ${item.name}.`;
+            } catch (err) {
+                showRunText(`Run: ${item.name}`, 'Failed to load the Python runtime.\n' + err.message + '\n\n(An internet connection is required the first time you run a .py file.)');
+                statusEl.textContent = "Python runtime failed to load.";
+            }
+        }
+
+        function showPrompt(title, prompt, def, cb) {
+            closeModal();
+            document.getElementById('modal-overlay').style.display = 'flex';
+            document.getElementById('input-dialog').style.display = 'block';
+            document.getElementById('diag-prompt').textContent = prompt;
+            document.getElementById('diag-input').value = def;
+            document.getElementById('diag-ok').onclick = () => {
+                const val = document.getElementById('diag-input').value.trim();
+                if (val) cb(val);
+                closeModal();
+            };
+            setTimeout(() => {
+                const inp = document.getElementById('diag-input');
+                inp.focus();
+                inp.select();
+            }, 50);
+        }
+
+        function closeTab(e, id) {
+            e.stopPropagation();
+            appData.tabs = appData.tabs.filter(t => t !== id);
+            if(appData.activeId === id) appData.activeId = appData.tabs[0] || null;
+            renderTabs();
+            syncEditor();
+        }
+
+        function toggleStartMenu(e) {
+            if (e) e.stopPropagation();
+            playClick();
+            if (startMenu.style.display === 'flex') {
+                startMenu.style.display = 'none';
+            } else {
+                closeMenus();
+                startMenu.style.display = 'flex';
+            }
+        }
+
+        // --- SEARCH/FIND ---
+        function showFindDialog() {
+            closeModal();
+            document.getElementById('modal-overlay').style.display = 'flex';
+            document.getElementById('find-dialog').style.display = 'block';
+            document.getElementById('find-input').value = appData.findState.lastFind || '';
+            document.getElementById('replace-input').value = '';
+            updateNameMatches();
+            setTimeout(() => document.getElementById('find-input').focus(), 50);
+        }
+
+        function showReplaceDialog() {
+            showFindDialog();
+        }
+
+        function updateNameMatches() {
+            const find = document.getElementById('find-input').value;
+            treeEl.querySelectorAll('.tree-line').forEach(el => el.classList.remove('rd-name-match'));
+            if (!find) return;
+            appData.files.forEach(f => {
+                if (f.name.includes(find)) {
+                    const el = treeEl.querySelector(`[data-file-id="${f.id}"]`);
+                    if (el) el.classList.add('rd-name-match');
+                }
+            });
+        }
+
+        function findText() {
+            const find = document.getElementById('find-input').value;
+            if (!find) { statusEl.textContent = "Enter text to find."; return; }
+            appData.findState.lastFind = find;
+            updateNameMatches();
+
+            const text = editorEl.value;
+            const start = editorEl.selectionStart;
+            let idx = text.indexOf(find, start + 1);
+            if (idx === -1) idx = text.indexOf(find);
+
+            if (idx !== -1) {
+                editorEl.focus();
+                editorEl.setSelectionRange(idx, idx + find.length);
+                statusEl.textContent = `Found "${find}" at position ${idx + 1}`;
+                playClick();
+                closeModal();
+                return;
+            }
+
+            const nameMatches = appData.files.filter(f => f.name.includes(find));
+            if (nameMatches.length > 0) {
+                selectItem(nameMatches[0].id, true);
+                statusEl.textContent = `Not in file content. Matched ${nameMatches.length} file/folder name(s), showing "${nameMatches[0].name}".`;
+                playClick();
+                return;
+            }
+
+            statusEl.textContent = "Not found.";
+        }
+
+        function replaceText() {
+            const find = document.getElementById('find-input').value;
+            const replace = document.getElementById('replace-input').value;
+            if (!find) { statusEl.textContent = "Enter text to find."; return; }
+
+            const text = editorEl.value;
+            const start = editorEl.selectionStart;
+            const end = editorEl.selectionEnd;
+            if (text.substring(start, end) === find) {
+                const newVal = text.substring(0, start) + replace + text.substring(end);
+                editorEl.value = newVal;
+                editorEl.setSelectionRange(start + replace.length, start + replace.length);
+                editorEl.dispatchEvent(new Event('input'));
+                statusEl.textContent = `Replaced "${find}" with "${replace}"`;
+                playClick();
+                closeModal();
+                return;
+            }
+
+            const activeItem = appData.files.find(f => f.id === appData.activeId);
+            if (activeItem && activeItem.name.includes(find)) {
+                activeItem.name = activeItem.name.replace(find, replace);
+                renderTree(); renderTabs(); saveData(true);
+                statusEl.textContent = `Renamed to "${activeItem.name}"`;
+                playClick();
+                closeModal();
+                return;
+            }
+
+            statusEl.textContent = "Select the text to replace first, or select a file/folder whose name matches.";
+        }
+
+        function replaceAllText() {
+            const find = document.getElementById('find-input').value;
+            const replace = document.getElementById('replace-input').value;
+            if (!find) { statusEl.textContent = "Enter text to find."; return; }
+
+            let contentChanged = false;
+            const text = editorEl.value;
+            const newVal = text.split(find).join(replace);
+            if (newVal !== text) {
+                editorEl.value = newVal;
+                editorEl.dispatchEvent(new Event('input'));
+                contentChanged = true;
+            }
+
+            let renamedCount = 0;
+            appData.files.forEach(f => {
+                if (f.name.includes(find)) {
+                    f.name = f.name.split(find).join(replace);
+                    renamedCount++;
+                }
+            });
+            if (renamedCount > 0) { renderTree(); renderTabs(); saveData(true); }
+
+            if (contentChanged || renamedCount > 0) {
+                const parts = [];
+                if (contentChanged) parts.push('the open file');
+                if (renamedCount > 0) parts.push(`${renamedCount} file/folder name(s)`);
+                statusEl.textContent = `Replaced all "${find}" with "${replace}" in ${parts.join(' and ')}.`;
+                playClick();
+                closeModal();
+            } else {
+                statusEl.textContent = "No occurrences found.";
+            }
+        }
+
+        // ============================================================
+        // RETRODEV 98 - INTERNAL CMD (Real Python + Real pip via Pyodide)
+        // ============================================================
+        let termPyodide = null;
+        let termPyodideLoading = null;
+        let termCwd = '/home/pyodide';
+        const termHistory = [];
+        let termHistIdx = -1;
+        let termBooted = false;
+        let termBusy = false;
+        let termAbort = null;
+
+        async function getTermPyodide() {
+            if (termPyodide) return termPyodide;
+            if (!termPyodideLoading) {
+                termPyodideLoading = (async () => {
+                    if (!window.loadPyodide) {
+                        await loadScriptOnce('https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js');
+                    }
+                    termPyodide = await loadPyodide({
+                        indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/'
+                    });
+                    await termPyodide.loadPackage(['micropip', 'numpy']);
+                    termPyodide.runPython(`
+import sys, os, io, traceback
+try:
+    os.chdir('/home/pyodide')
+except Exception:
+    pass
+`);
+                    return termPyodide;
+                })();
+            }
+            return termPyodideLoading;
+        }
+
+        async function preloadPythonStack() {
+            playClick();
+            statusEl.textContent = "Preloading Python + numpy...";
+            try {
+                await getTermPyodide();
+                statusEl.textContent = "Python + numpy preloaded.";
+                if (document.getElementById('terminal-window').style.display === 'flex') {
+                    termPrint('Python runtime + numpy preloaded.', 'ok');
+                }
+            } catch (e) {
+                statusEl.textContent = "Preload failed: " + e.message;
+            }
+        }
+
+        function termPrint(text, cls) {
+            const out = document.getElementById('terminal-output');
+            const div = document.createElement('div');
+            if (cls === 'err') div.style.color = '#ff5555';
+            else if (cls === 'ok') div.style.color = '#33ff33';
+            else if (cls === 'info') div.style.color = '#00aaff';
+            else if (cls === 'dim') div.style.color = '#808080';
+            else if (cls === 'warn') div.style.color = '#ffcc00';
+            div.textContent = text;
+            out.appendChild(div);
+            const body = document.getElementById('terminal-body');
+            body.scrollTop = body.scrollHeight;
+        }
+
+        function openTerminal() {
+            closeMenus();
+            playClick();
+            const win = document.getElementById('terminal-window');
+            win.style.display = 'flex';
+            taskbarTerm.style.display = 'flex';
+            const input = document.getElementById('terminal-input');
+            input.focus();
+
+            if (!termBooted) {
+                termBooted = true;
+                termPrint('RetroDev 98 [Version 4.10.1998]', 'dim');
+                termPrint('(c) 1998 RetroDev Corporation. All rights reserved.', 'dim');
+                termPrint('');
+                termPrint('Type HELP for a list of commands.', 'info');
+                termPrint('Type PIP INSTALL <package> to install real Python packages.', 'info');
+                termPrint('numpy is preloaded. Try: PY -c "import numpy; print(numpy.__version__)"', 'dim');
+                termPrint('Press Ctrl+C to cancel the current line or running command.', 'dim');
+                termPrint('');
+                termPrint('Python runtime boots on first PY / PIP command...', 'dim');
+                termPrint('');
+            }
+
+            if (!input.dataset.bound) {
+                input.dataset.bound = '1';
+                input.addEventListener('keydown', onTermKey);
+            }
+        }
+
+        function minimizeTerminal() {
+            playClick();
+            document.getElementById('terminal-window').style.display = 'none';
+            taskbarTerm.classList.remove('active');
+        }
+
+        function closeTerminal() {
+            playClick();
+            document.getElementById('terminal-window').style.display = 'none';
+            taskbarTerm.style.display = 'none';
+        }
+
+        function openTerminalAndRun(cmd) {
+            openTerminal();
+            setTimeout(async () => {
+                termPrint(getTermPrompt() + ' ' + cmd);
+                termHistory.push(cmd);
+                termHistIdx = termHistory.length;
+                await runTermCommand(cmd);
+            }, 100);
+        }
+
+        async function onTermKey(e) {
+            const input = e.target;
+
+            if (e.ctrlKey && (e.key === 'c' || e.key === 'C')) {
+                e.preventDefault();
+                input.value = '';
+                if (termBusy) {
+                    termAbort = true;
+                    termPrint('^C', 'warn');
+                    termPrint('[abort requested — waiting for current step to yield]', 'dim');
+                } else {
+                    termPrint('^C', 'warn');
+                }
+                return;
+            }
+
+            if (e.ctrlKey && (e.key === 'l' || e.key === 'L')) {
+                e.preventDefault();
+                document.getElementById('terminal-output').innerHTML = '';
+                return;
+            }
+
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const cmd = input.value;
+                input.value = '';
+                termPrint(getTermPrompt() + ' ' + cmd);
+                if (cmd.trim()) {
+                    termHistory.push(cmd);
+                    termHistIdx = termHistory.length;
+                    await runTermCommand(cmd);
+                }
+                return;
+            }
+
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (termHistIdx > 0) {
+                    termHistIdx--;
+                    input.value = termHistory[termHistIdx];
+                }
+                return;
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (termHistIdx < termHistory.length - 1) {
+                    termHistIdx++;
+                    input.value = termHistory[termHistIdx];
+                } else {
+                    termHistIdx = termHistory.length;
+                    input.value = '';
+                }
+                return;
+            }
+        }
+
+        function getTermPrompt() {
+            const name = termCwd.replace('/home/pyodide', 'C:\\RETRODEV98');
+            return name + '>';
+        }
+
+        function termCheckAbort() {
+            if (termAbort) {
+                termAbort = false;
+                throw new Error('KeyboardInterrupt');
+            }
+        }
+
+        function termYield() {
+            return new Promise(r => setTimeout(r, 0));
+        }
+
+        async function runTermCommand(raw) {
+            const line = raw.trim();
+            if (!line) return;
+            const parts = line.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+            const cmd = parts[0].toUpperCase();
+            const args = parts.slice(1).map(a => a.replace(/^"|"$/g, ''));
+
+            termBusy = true;
+            termAbort = false;
+
+            try {
+                switch (cmd) {
+                    case 'HELP':
+                    case '?':
+                        termPrint('');
+                        termPrint('Available commands:', 'info');
+                        termPrint('  HELP              Show this list');
+                        termPrint('  CLS / CLEAR       Clear the screen');
+                        termPrint('  DIR / LS          List directory contents');
+                        termPrint('  CD <dir>          Change directory');
+                        termPrint('  PWD               Print working directory');
+                        termPrint('  TYPE <file>       Print file contents');
+                        termPrint('  ECHO <text>       Print text');
+                        termPrint('  PY <file>         Run a Python file');
+                        termPrint('  PY -c "<code>"    Run inline Python code');
+                        termPrint('  PY                Enter Python REPL (type exit() to leave)');
+                        termPrint('  PIP <args>        Real pip. e.g.  PIP INSTALL requests');
+                        termPrint('  PIP LIST          Show installed packages');
+                        termPrint('  REN <old> <new>   Rename a file in the workspace');
+                        termPrint('  VER               Show version');
+                        termPrint('  EXIT              Close this window');
+                        termPrint('');
+                        termPrint('numpy is preloaded. Try: PY -c "import numpy; print(numpy.__version__)"', 'dim');
+                        termPrint('PIP installs REAL pure-Python wheels from PyPI via micropip.', 'dim');
+                        termPrint('Ctrl+C cancels the current line or aborts a running command.', 'dim');
+                        termPrint('');
+                        return;
+
+                    case 'CLS':
+                    case 'CLEAR':
+                        document.getElementById('terminal-output').innerHTML = '';
+                        return;
+
+                    case 'VER':
+                        termPrint('');
+                        termPrint('RetroDev 98 Command Prompt [Version 4.10.1998]', 'info');
+                        termPrint('Python backend: Pyodide (WebAssembly CPython)', 'dim');
+                        termPrint('');
+                        return;
+
+                    case 'ECHO':
+                        termPrint(args.join(' '));
+                        return;
+
+                    case 'EXIT':
+                        closeTerminal();
+                        return;
+
+                    case 'PWD':
+                        termPrint(termCwd);
+                        return;
+
+                    case 'REN':
+                    case 'RENAME': {
+                        if (args.length < 2) {
+                            termPrint('Usage: REN <currentname> <newname>', 'err');
+                            return;
+                        }
+                        const oldName = args[0].toUpperCase();
+                        const newName = args.slice(1).join(' ');
+                        const target = appData.files.find(f => f.name.toUpperCase() === oldName);
+                        if (!target) {
+                            termPrint(`ERR: No workspace file named "${args[0]}".`, 'err');
+                            return;
+                        }
+                        const dup = appData.files.find(f =>
+                            f.id !== target.id &&
+                            f.parent === target.parent &&
+                            f.name.toLowerCase() === newName.toLowerCase()
+                        );
+                        if (dup) {
+                            termPrint(`ERR: "${newName}" already exists here.`, 'err');
+                            return;
+                        }
+                        const prev = target.name;
+                        target.name = newName;
+                        renderTree(); renderTabs(); saveData(true);
+                        if (appData.activeId === target.id) {
+                            taskbarItem.textContent = "RETRODEV 98 - " + newName;
+                        }
+                        termPrint(`Renamed "${prev}" -> "${newName}"`, 'ok');
+                        return;
+                    }
+
+                    case 'DIR':
+                    case 'LS': {
+                        termPrint('Loading Python runtime...', 'dim');
+                        const py = await getTermPyodide();
+                        termCheckAbort();
+                        const out = py.runPython(`
+import os
+try:
+    entries = sorted(os.listdir('.'))
+    lines = []
+    for e in entries:
+        full = os.path.join('.', e)
+        kind = '<DIR>' if os.path.isdir(full) else '     '
+        try:
+            size = os.path.getsize(full)
+        except Exception:
+            size = 0
+        lines.append(f"{kind}  {size:>10}  {e}")
+    '\\n'.join(lines) if lines else '(empty)'
+except Exception as ex:
+    'ERR: ' + str(ex)
+`);
+                        termPrint(out);
+                        return;
+                    }
+
+                    case 'CD':
+                    case 'CHDIR': {
+                        if (!args[0]) { termPrint(termCwd); return; }
+                        termPrint('Loading Python runtime...', 'dim');
+                        const py = await getTermPyodide();
+                        termCheckAbort();
+                        const target = args[0];
+                        const out = py.runPython(`
+import os
+try:
+    os.chdir(${JSON.stringify(target)})
+    os.getcwd()
+except Exception as ex:
+    'ERR: ' + str(ex)
+`);
+                        if (out.startsWith('ERR:')) termPrint(out, 'err');
+                        else { termCwd = out; termPrint(''); }
+                        return;
+                    }
+
+                    case 'TYPE':
+                    case 'CAT': {
+                        if (!args[0]) { termPrint('Usage: TYPE <file>', 'err'); return; }
+                        termPrint('Loading Python runtime...', 'dim');
+                        const py = await getTermPyodide();
+                        termCheckAbort();
+                        const out = py.runPython(`
+try:
+    with open(${JSON.stringify(args[0])}, 'r') as f:
+        f.read()
+except Exception as ex:
+    'ERR: ' + str(ex)
+`);
+                        termPrint(out);
+                        return;
+                    }
+
+                    case 'PY':
+                    case 'PYTHON': {
+                        if (args[0] === '-c' && args[1]) {
+                            termPrint('Loading Python runtime...', 'dim');
+                            const py = await getTermPyodide();
+                            termCheckAbort();
+                            py.setStdout({ batched: (s) => termPrint(s) });
+                            py.setStderr({ batched: (s) => termPrint(s, 'err') });
+                            try {
+                                await py.runPythonAsync(args.slice(1).join(' '));
+                            } catch (err) {
+                                termPrint(String(err), 'err');
+                            }
+                            return;
+                        }
+                        if (args[0]) {
+                            termPrint('Loading Python runtime...', 'dim');
+                            const py = await getTermPyodide();
+                            termCheckAbort();
+                            py.setStdout({ batched: (s) => termPrint(s) });
+                            py.setStderr({ batched: (s) => termPrint(s, 'err') });
+                            const filename = args[0];
+                            try {
+                                await py.runPythonAsync(`
+import os as _os
+_src_path = ${JSON.stringify(filename)}
+with open(_src_path, 'r') as _f:
+    _src = _f.read()
+_g = {'__name__': '__main__', '__file__': _os.path.abspath(_src_path)}
+exec(compile(_src, _os.path.abspath(_src_path), 'exec'), _g)
+`);
+                            } catch (err) {
+                                termPrint(String(err), 'err');
+                            }
+                            return;
+                        }
+                        await runPythonREPL();
+                        return;
+                    }
+
+                    case 'PIP':
+                    case 'PIP3': {
+                        await runPip(args);
+                        return;
+                    }
+
+                    default:
+                        termPrint(`'${parts[0]}' is not recognized as an internal or external command,`, 'err');
+                        termPrint('operable program or batch file.', 'err');
+                }
+            } finally {
+                termBusy = false;
+                termAbort = false;
+            }
+        }
+
+        async function runPip(args) {
+            if (args.length === 0 || args[0].toLowerCase() === 'help' || args[0] === '--help') {
+                termPrint('');
+                termPrint('PIP - Real Python package installer (via micropip/Pyodide)', 'info');
+                termPrint('');
+                termPrint('  PIP INSTALL <pkg> [pkg2 ...]   Install one or more packages');
+                termPrint('  PIP INSTALL <pkg>==1.2.3        Install a specific version');
+                termPrint('  PIP UNINSTALL <pkg>             Uninstall a package');
+                termPrint('  PIP LIST                        List installed packages');
+                termPrint('  PIP FREEZE                      Show installed with versions');
+                termPrint('  PIP SHOW <pkg>                  Show package info');
+                termPrint('');
+                termPrint('Examples:', 'dim');
+                termPrint('  PIP INSTALL requests', 'dim');
+                termPrint('  PIP INSTALL cowsay', 'dim');
+                termPrint('  PIP INSTALL snowballstemmer', 'dim');
+                termPrint('');
+                termPrint('NOTE: micropip installs pure-Python wheels from PyPI.', 'dim');
+                termPrint('For Pyodide-distributed packages like numpy, use PY -c "import numpy".', 'dim');
+                termPrint('');
+                return;
+            }
+
+            const sub = args[0].toLowerCase();
+            const rest = args.slice(1);
+
+            termPrint('Loading Python runtime (first time may take ~10s)...', 'dim');
+            let py;
+            try {
+                py = await getTermPyodide();
+            } catch (err) {
+                termPrint('Failed to load Python runtime: ' + err.message, 'err');
+                termPrint('(An internet connection is required.)', 'err');
+                return;
+            }
+            termCheckAbort();
+
+            if (sub === 'list') {
+                try {
+                    const out = py.runPython(`
+import importlib.metadata as md
+pkgs = sorted({d.metadata['Name'] for d in md.distributions() if d.metadata['Name']})
+'\\n'.join(pkgs) if pkgs else '(none)'
+`);
+                    termPrint('');
+                    termPrint('Installed packages:', 'info');
+                    if (out === '(none)') termPrint('  (none)');
+                    else out.split('\n').forEach(p => termPrint('  ' + p));
+                    termPrint('');
+                } catch (err) {
+                    termPrint('ERR: ' + err.message, 'err');
+                }
+                return;
+            }
+
+            if (sub === 'freeze') {
+                try {
+                    const out = py.runPython(`
+import importlib.metadata as md
+pkgs = sorted({d.metadata['Name'] + '==' + d.version for d in md.distributions() if d.metadata['Name']})
+'\\n'.join(pkgs)
+`);
+                    termPrint(out || '(none)');
+                } catch (err) {
+                    termPrint('ERR: ' + err.message, 'err');
+                }
+                return;
+            }
+
+            if (sub === 'show') {
+                if (!rest[0]) { termPrint('Usage: PIP SHOW <package>', 'err'); return; }
+                try {
+                    const out = py.runPython(`
+import importlib.metadata as md
+name = ${JSON.stringify(rest[0])}
+try:
+    d = md.distribution(name)
+    meta = d.metadata
+    lines = []
+    lines.append('Name: ' + (meta['Name'] or name))
+    lines.append('Version: ' + d.version)
+    if meta['Summary']: lines.append('Summary: ' + meta['Summary'])
+    if meta['Home-page']: lines.append('Home-page: ' + meta['Home-page'])
+    if meta['Author']: lines.append('Author: ' + meta['Author'])
+    '\\n'.join(lines)
+except Exception as ex:
+    'ERR: ' + str(ex)
+`);
+                    if (out.startsWith('ERR:')) termPrint(out, 'err');
+                    else termPrint(out);
+                } catch (err) {
+                    termPrint('ERR: ' + err.message, 'err');
+                }
+                return;
+            }
+
+            if (sub === 'install') {
+                if (rest.length === 0) { termPrint('ERROR: You must give at least one requirement to install.', 'err'); return; }
+                termPrint('');
+                termPrint('Installing: ' + rest.join(', '), 'info');
+                termPrint('');
+                termPrint('(press Ctrl+C to abort)', 'dim');
+                try {
+                    const pkgsJson = JSON.stringify(rest);
+                    const pyCode = `
+import micropip
+
+async def _do_install(_abort_check):
+    pkgs = ${pkgsJson}
+    results = []
+    for pkg in pkgs:
+        if _abort_check():
+            results.append(('ABORT', pkg, 'cancelled by user'))
+            break
+        try:
+            await micropip.install(pkg)
+            results.append(('OK', pkg, ''))
+        except Exception as e:
+            results.append(('ERR', pkg, str(e)))
+    return results
+
+_results = await _do_install(lambda: __import__('js').window.__termAbortFlag)
+`;
+                    py.setStdout({ batched: (s) => termPrint(s) });
+                    py.setStderr({ batched: (s) => termPrint(s, 'err') });
+
+                    window.__termAbortFlag = false;
+
+                    await py.runPythonAsync(pyCode);
+                    const results = py.globals.get('_results');
+                    const arr = results && results.toJs ? results.toJs() : results;
+                    let anyErr = false;
+                    let aborted = false;
+                    if (arr) {
+                        for (const item of arr) {
+                            const status = item[0];
+                            const pkg = item[1];
+                            const msg = item[2];
+                            if (status === 'OK') {
+                                termPrint('Successfully installed ' + pkg, 'ok');
+                            } else if (status === 'ABORT') {
+                                aborted = true;
+                                termPrint('Aborted install of ' + pkg + '.', 'warn');
+                            } else {
+                                anyErr = true;
+                                termPrint('Failed to install ' + pkg + ': ' + msg, 'err');
+                                if (/pure|wheel|extension|not.*found|No matching|No such/i.test(msg)) {
+                                    termPrint('  (This may be a C-extension package without a Pyodide wheel.)', 'dim');
+                                }
+                            }
+                        }
+                    }
+                    if (results && results.destroy) results.destroy();
+                    termPrint('');
+                    if (aborted) termPrint('Install aborted.', 'warn');
+                    else if (!anyErr) termPrint('All packages installed.', 'ok');
+                } catch (err) {
+                    termPrint('Install failed: ' + err.message, 'err');
+                }
+                return;
+            }
+
+            if (sub === 'uninstall') {
+                if (!rest[0]) { termPrint('Usage: PIP UNINSTALL <package>', 'err'); return; }
+                try {
+                    const out = py.runPython(`
+import micropip
+try:
+    micropip.uninstall(${JSON.stringify(rest[0])})
+    'OK'
+except Exception as ex:
+    'ERR: ' + str(ex)
+`);
+                    if (out === 'OK') termPrint('Successfully uninstalled ' + rest[0], 'ok');
+                    else termPrint(out, 'err');
+                } catch (err) {
+                    termPrint('ERR: ' + err.message, 'err');
+                }
+                return;
+            }
+
+            termPrint(`Unknown pip subcommand: ${sub}`, 'err');
+            termPrint('Try: PIP HELP', 'dim');
+        }
+
+        async function runPythonREPL() {
+            termPrint('Loading Python runtime...', 'dim');
+            const py = await getTermPyodide();
+            const ver = py.runPython('import sys; sys.version.split()[0]');
+            termPrint('Python ' + ver + ' on Pyodide', 'info');
+            termPrint('Type exit() to return to CMD. Ctrl+C cancels the current line.', 'dim');
+            termPrint('');
+
+            const input = document.getElementById('terminal-input');
+            const prompt = document.getElementById('terminal-prompt');
+            const oldPrompt = prompt.textContent;
+            prompt.textContent = '>>>';
+
+            const replHandler = async (e) => {
+                if (e.ctrlKey && (e.key === 'c' || e.key === 'C')) {
+                    e.preventDefault();
+                    input.value = '';
+                    termPrint('^C', 'warn');
+                    return;
+                }
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                const code = input.value;
+                input.value = '';
+                termPrint('>>> ' + code);
+                if (code.trim() === 'exit()' || code.trim() === 'quit()') {
+                    prompt.textContent = oldPrompt;
+                    input.removeEventListener('keydown', replHandler);
+                    input.addEventListener('keydown', onTermKey);
+                    termPrint('');
+                    return;
+                }
+                try {
+                    py.setStdout({ batched: (s) => termPrint(s) });
+                    py.setStderr({ batched: (s) => termPrint(s, 'err') });
+                    try {
+                        await py.runPythonAsync(`
+try:
+    _r = eval(compile(${JSON.stringify(code)}, '<repl>', 'eval'))
+    _result = repr(_r) if _r is not None else ''
+except SyntaxError:
+    exec(compile(${JSON.stringify(code)}, '<repl>', 'exec'))
+    _result = ''
+`);
+                        const out = py.globals.get('_result');
+                        if (out) termPrint(String(out), 'ok');
+                    } catch (err) {
+                        termPrint(String(err), 'err');
+                    }
+                } catch (err) {
+                    termPrint(String(err), 'err');
+                }
+            };
+
+            input.removeEventListener('keydown', onTermKey);
+            input.addEventListener('keydown', replHandler);
+            input.focus();
+        }
+
+        // Make terminal draggable
+        (function makeTerminalDraggable() {
+            const win = document.getElementById('terminal-window');
+            let dragging = false, ox = 0, oy = 0;
+            const bar = win.querySelector('.title-bar');
+
+            function startDrag(clientX, clientY) {
+                dragging = true;
+                const rect = win.getBoundingClientRect();
+                ox = clientX - rect.left;
+                oy = clientY - rect.top;
+            }
+
+            function moveDrag(clientX, clientY) {
+                if (!dragging) return;
+                win.style.left = (clientX - ox) + 'px';
+                win.style.top = (clientY - oy) + 'px';
+                win.style.right = 'auto';
+                win.style.bottom = 'auto';
+            }
+
+            bar.addEventListener('mousedown', (e) => {
+                if (e.target.closest('.rd-btn-small')) return;
+                startDrag(e.clientX, e.clientY);
+                e.preventDefault();
+            });
+            document.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
+            document.addEventListener('mouseup', () => { dragging = false; });
+
+            bar.addEventListener('touchstart', (e) => {
+                if (e.target.closest('.rd-btn-small')) return;
+                const touch = e.touches[0];
+                startDrag(touch.clientX, touch.clientY);
+                e.preventDefault();
+            }, { passive: false });
+            document.addEventListener('touchmove', (e) => {
+                if (dragging && e.touches[0]) {
+                    moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+                    e.preventDefault();
+                }
+            }, { passive: false });
+            document.addEventListener('touchend', () => { dragging = false; });
+        })();
+
+        // --- INIT ---
+        init();
+        document.getElementById('find-input').addEventListener('input', updateNameMatches);
+    </script>
+</body>
+</html>
