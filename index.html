@@ -108,12 +108,11 @@
         .sidebar-header { background: var(--rd-gray); padding: 3px 6px; border-bottom: 1px solid var(--rd-dark); font-weight: bold; position: sticky; top: 0; z-index: 5; }
         
         .tree-container { padding: 4px; white-space: pre; font-family: var(--font-fixed); font-size: 11px; flex-grow: 1; overflow-y: auto; min-height: 100%; position: relative; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
-        .tree-line { display: flex; align-items: center; min-height: 24px; cursor: pointer; user-select: none; padding: 2px 4px; border-radius: 2px; transition: background 0.15s, box-shadow 0.15s; }
+        .tree-line { display: flex; align-items: center; min-height: 24px; cursor: pointer; user-select: none; padding: 2px 4px; border-radius: 2px; transition: background 0.15s, box-shadow 0.15s, transform 0.1s; }
         .tree-line:hover { background-color: #f0f0f0; }
         .tree-line.active { background-color: var(--rd-pink); color: white; }
         .tree-line.rd-name-match { box-shadow: inset 3px 0 0 0 #ff8000; }
-        .tree-line.dragging { opacity: 0.5; }
-        .tree-line.touch-dragging { opacity: 0.7; box-shadow: 0 0 0 2px var(--rd-pink), 0 4px 12px rgba(0,0,0,0.4); background: #fff0f7; transform: scale(1.02); z-index: 100; position: relative; }
+        .tree-line.touch-dragging { opacity: 0.6; box-shadow: 0 0 0 2px var(--rd-pink), 0 4px 12px rgba(0,0,0,0.4); background: #fff0f7; transform: scale(1.02); z-index: 100; position: relative; }
         .tree-line.touch-drag-ghost { position: fixed; pointer-events: none; background: var(--rd-pink); color: white; padding: 6px 12px; border-radius: 4px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.4); z-index: 99999; font-size: 12px; display: flex; align-items: center; gap: 6px; opacity: 0.95; }
         .tree-text { font-family: var(--font-main); margin-left: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tree-folder-toggle { cursor: pointer; margin-right: 4px; font-weight: bold; min-width: 16px; text-align: center; user-select: none; touch-action: manipulation; }
@@ -186,7 +185,7 @@
         .btn-action { padding: 8px 16px; background: var(--rd-gray); border: 1px solid var(--rd-white); border-right: 1px solid var(--rd-black); border-bottom: 1px solid var(--rd-black); text-align: center; min-width: 75px; cursor: pointer; touch-action: manipulation; }
         .btn-action:active { border: 1px solid var(--rd-black); border-right-color: var(--rd-white); border-bottom-color: var(--rd-white); }
 
-        /* --- HOLD-TO-DRAG PROGRESS INDICATOR --- */
+        /* --- HOLD-TO-CONTEXT-MENU PROGRESS INDICATOR --- */
         .hold-progress {
             position: fixed;
             pointer-events: none;
@@ -288,7 +287,7 @@
 </head>
 <body onclick="handleBackgroundClick(event)" oncontextmenu="return false;">
 
-    <!-- Hold-to-drag progress ring -->
+    <!-- Hold-to-context-menu progress ring -->
     <div id="hold-progress" class="hold-progress">
         <svg viewBox="0 0 38 38">
             <circle class="bg"></circle>
@@ -387,7 +386,7 @@
             </div>
 
             <div class="status-bar">
-                <div class="status-pane" style="flex-grow:1" id="status-msg">System Ready. Hold a file for 5s to drag on mobile.</div>
+                <div class="status-pane" style="flex-grow:1" id="status-msg">Drag files to move. Hold 5s for context menu.</div>
                 <div class="status-pane" id="cursor-info" style="width:110px">Ln 1, Col 1</div>
                 <div class="status-pane" style="width:50px">R98</div>
             </div>
@@ -548,7 +547,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
         // --- DATA ---
-        let appData = JSON.parse(localStorage.getItem('rd98_pro_final_v10_pink')) || {
+        let appData = JSON.parse(localStorage.getItem('rd98_pro_final_v11_pink')) || {
             files: [],
             activeId: null,
             tabs: [],
@@ -557,15 +556,13 @@
         };
 
         const tips = [
-            "On mobile, hold a file for 5 seconds to pick it up, then drag.",
+            "Drag files directly to move them — no hold needed.",
+            "Hold a file for 5 seconds to open the context menu.",
             "Use Ctrl+S to save instantly.",
             "Open Tools > Command Prompt to run real Python with pip.",
-            "Press F2 to rename the selected file or folder.",
-            "Right-click (or long-press) a file to delete or download it.",
             "Try: PIP INSTALL requests — then import it in a .py file.",
             "numpy is pre-loaded — 'import numpy' just works.",
             "Use Ctrl+F to find text.",
-            "Drag and drop files in the tree to move them between folders.",
             "Drag a file onto the empty area below the tree to move it to root.",
             "Click anywhere outside the tree to deselect."
         ];
@@ -665,10 +662,11 @@
         }
 
         // ============================================================
-        // TOUCH: HOLD-TO-DRAG (5 SECONDS) + LONG PRESS CONTEXT MENU
+        // TOUCH: DRAG ON MOVE + HOLD 5s FOR CONTEXT MENU
         // ============================================================
-        const HOLD_DURATION = 5000;   // 5 seconds to pick up
-        const LONGPRESS_DURATION = 5000; // 5 seconds for context menu (only when not moving)
+        const HOLD_DURATION = 5000;   // 5 seconds for context menu
+        const DRAG_THRESHOLD = 8;     // pixels of movement to start dragging
+        const TAP_THRESHOLD = 300;    // ms — quick tap selects/deselects
 
         let touchState = {
             active: false,
@@ -678,17 +676,14 @@
             startY: 0,
             startTime: 0,
             holdTimer: null,
-            longPressTimer: null,
-            mode: null, // 'hold' | 'longpress' | null
             dragging: false,
             ghostEl: null,
             progressStart: 0,
             progressRAF: null,
             moved: false,
-            pointerId: null
+            contextMenuShown: false
         };
 
-        // The unified touch handler for the tree
         function onTreeTouchStart(e) {
             const line = e.target.closest('.tree-line');
             if (!line) return;
@@ -707,30 +702,20 @@
             touchState.startX = touch.clientX;
             touchState.startY = touch.clientY;
             touchState.startTime = Date.now();
-            touchState.mode = null;
             touchState.dragging = false;
             touchState.moved = false;
+            touchState.contextMenuShown = false;
 
             // Select the item visually
             if (appData.activeId !== fileId) {
                 selectItem(fileId, true);
             }
 
-            // Start hold timer (5 seconds) -> enter drag mode
+            // Start 5-second hold timer for CONTEXT MENU (not drag)
             touchState.holdTimer = setTimeout(() => {
                 if (!touchState.active) return;
-                // If the user hasn't moved and hasn't triggered long press yet, start drag mode
-                if (!touchState.moved && touchState.mode !== 'longpress') {
-                    enterDragMode();
-                }
-            }, HOLD_DURATION);
-
-            // Start long-press timer (5 seconds) -> show context menu (only if not dragging)
-            touchState.longPressTimer = setTimeout(() => {
-                if (!touchState.active) return;
-                if (!touchState.moved && touchState.mode !== 'hold') {
-                    // If we're already in drag mode, don't show the context menu
-                    if (touchState.dragging) return;
+                // Only show context menu if user hasn't started dragging
+                if (!touchState.dragging && !touchState.moved) {
                     showContextMenu({
                         preventDefault: () => {},
                         stopPropagation: () => {},
@@ -740,10 +725,11 @@
                         clientY: touchState.startY,
                         target: touchState.itemEl
                     }, 'tree');
-                    touchState.mode = 'longpress';
+                    touchState.contextMenuShown = true;
                     if (navigator.vibrate) navigator.vibrate(20);
                 }
-            }, LONGPRESS_DURATION);
+                hideHoldProgress();
+            }, HOLD_DURATION);
 
             // Start the progress ring animation
             touchState.progressStart = Date.now();
@@ -752,9 +738,9 @@
 
         function startProgressAnimation() {
             const total = HOLD_DURATION;
-            const circumference = 2 * Math.PI * 16; // r=16
+            const circumference = 2 * Math.PI * 16;
             function tick() {
-                if (!touchState.active) return;
+                if (!touchState.active || touchState.dragging) return;
                 const elapsed = Date.now() - touchState.progressStart;
                 const pct = Math.min(elapsed / total, 1);
                 const offset = circumference * (1 - pct);
@@ -775,14 +761,10 @@
             const dy = touch.clientY - touchState.startY;
             const dist = Math.sqrt(dx*dx + dy*dy);
 
-            if (dist > 10) {
+            // If moved beyond threshold and not already dragging, start drag
+            if (dist > DRAG_THRESHOLD && !touchState.dragging && !touchState.contextMenuShown) {
                 touchState.moved = true;
-                // Cancel hold & long press if the user moves before 5 seconds
-                if (!touchState.dragging && touchState.mode !== 'hold') {
-                    clearHoldTimers();
-                    hideHoldProgress();
-                    // If they're dragging but not in hold mode, allow native scroll
-                }
+                enterDragMode();
             }
 
             if (touchState.dragging && touchState.ghostEl) {
@@ -813,7 +795,11 @@
         function onTreeTouchEnd(e) {
             if (!touchState.active) return;
 
-            clearHoldTimers();
+            // Clear hold timer
+            if (touchState.holdTimer) {
+                clearTimeout(touchState.holdTimer);
+                touchState.holdTimer = null;
+            }
             hideHoldProgress();
 
             if (touchState.dragging && touchState.ghostEl) {
@@ -867,18 +853,17 @@
                     touchState.ghostEl = null;
                 }
                 touchState.itemEl.classList.remove('touch-dragging');
-            }
-
-            // If the user just tapped (no drag, no long press), toggle selection
-            const elapsed = Date.now() - touchState.startTime;
-            if (!touchState.dragging && touchState.mode !== 'longpress' && !touchState.moved && elapsed < 500) {
+            } else if (!touchState.contextMenuShown && !touchState.moved) {
                 // Quick tap: select or deselect
-                if (appData.activeId === touchState.itemId) {
-                    deselectAll();
-                } else {
-                    selectItem(touchState.itemId);
+                const elapsed = Date.now() - touchState.startTime;
+                if (elapsed < TAP_THRESHOLD) {
+                    if (appData.activeId === touchState.itemId) {
+                        deselectAll();
+                    } else {
+                        selectItem(touchState.itemId);
+                    }
+                    playClick();
                 }
-                playClick();
             }
 
             // Reset state
@@ -886,8 +871,8 @@
             touchState.itemId = null;
             touchState.itemEl = null;
             touchState.dragging = false;
-            touchState.mode = null;
             touchState.moved = false;
+            touchState.contextMenuShown = false;
             if (touchState.progressRAF) {
                 cancelAnimationFrame(touchState.progressRAF);
                 touchState.progressRAF = null;
@@ -897,9 +882,11 @@
         function enterDragMode() {
             if (!touchState.active || touchState.dragging) return;
             touchState.dragging = true;
-            touchState.mode = 'hold';
             hideHoldProgress();
-            clearHoldTimers();
+            if (touchState.holdTimer) {
+                clearTimeout(touchState.holdTimer);
+                touchState.holdTimer = null;
+            }
 
             const item = appData.files.find(f => f.id === touchState.itemId);
             if (!item) return;
@@ -916,21 +903,6 @@
             touchState.itemEl.classList.add('touch-dragging');
             if (navigator.vibrate) navigator.vibrate(30);
             statusEl.textContent = `Dragging "${item.name}" — release on a folder to move.`;
-
-            // Prevent scrolling while dragging
-            document.body.style.overflow = 'hidden';
-            document.addEventListener('touchmove', preventScrollWhileDragging, { passive: false });
-        }
-
-        function preventScrollWhileDragging(e) {
-            if (touchState.dragging) {
-                e.preventDefault();
-            }
-        }
-
-        function clearHoldTimers() {
-            if (touchState.holdTimer) { clearTimeout(touchState.holdTimer); touchState.holdTimer = null; }
-            if (touchState.longPressTimer) { clearTimeout(touchState.longPressTimer); touchState.longPressTimer = null; }
         }
 
         function hideHoldProgress() {
@@ -946,7 +918,7 @@
         // Show the hold progress ring as soon as the user touches a file
         document.addEventListener('touchstart', (e) => {
             const line = e.target.closest('.tree-line');
-            if (line) {
+            if (line && !e.target.closest('.tree-folder-toggle')) {
                 const touch = e.touches[0];
                 showHoldProgress(touch.clientX, touch.clientY);
             }
@@ -957,12 +929,14 @@
         treeEl.addEventListener('touchmove', onTreeTouchMove, { passive: false });
         treeEl.addEventListener('touchend', onTreeTouchEnd, { passive: true });
         treeEl.addEventListener('touchcancel', (e) => {
-            clearHoldTimers();
+            if (touchState.holdTimer) { clearTimeout(touchState.holdTimer); touchState.holdTimer = null; }
             hideHoldProgress();
             if (touchState.ghostEl) { touchState.ghostEl.remove(); touchState.ghostEl = null; }
             if (touchState.itemEl) touchState.itemEl.classList.remove('touch-dragging');
             touchState.active = false;
             touchState.dragging = false;
+            touchState.moved = false;
+            touchState.contextMenuShown = false;
             if (touchState.progressRAF) { cancelAnimationFrame(touchState.progressRAF); touchState.progressRAF = null; }
         }, { passive: true });
 
@@ -1379,7 +1353,7 @@
         }
 
         function saveData(silent = false) {
-            localStorage.setItem('rd98_pro_final_v10_pink', JSON.stringify(appData));
+            localStorage.setItem('rd98_pro_final_v11_pink', JSON.stringify(appData));
             if(!silent) { statusEl.textContent = "Workspace persistent."; playClick(); }
         }
 
@@ -1538,20 +1512,6 @@
             }).catch((err) => {
                 statusEl.textContent = "Error creating ZIP: " + err.message;
             });
-        }
-
-        function getFolderPath(folderId) {
-            const parts = [];
-            let current = appData.files.find(f => f.id === folderId);
-            while (current) {
-                parts.unshift(current.name);
-                if (current.parent) {
-                    current = appData.files.find(f => f.id === current.parent);
-                } else {
-                    break;
-                }
-            }
-            return parts.join('/');
         }
 
         function copyText() {
