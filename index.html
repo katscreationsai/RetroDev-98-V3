@@ -2,17 +2,22 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>RetroDev 98 - Professional Edition (FIXED + CMD + PYODIDE)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>RetroDev 98 - Professional Edition (PINK EDITION)</title>
     <style>
-        /* --- RETRODEV 98 DESIGN SYSTEM --- */
+        /* --- RETRODEV 98 DESIGN SYSTEM - PINK EDITION --- */
         :root {
-            --rd-teal: #c2185b;
+            --rd-teal: #ff69b4;
             --rd-gray: #c0c0c0;
             --rd-white: #ffffff;
             --rd-dark: #808080;
             --rd-black: #000000;
-            --rd-blue: #99004d;
+            --rd-blue: #000080;
+            --rd-pink: #ff69b4;
+            --rd-pink-dark: #d43f8d;
+            --rd-pink-light: #ffb6d9;
             --rd-text-gray: #808080;
             --font-main: "MS Sans Serif", Tahoma, Verdana, sans-serif;
             --font-fixed: "Courier New", Courier, monospace;
@@ -28,50 +33,56 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font-main); font-size: 11px; -webkit-tap-highlight-color: transparent; }
 
-        body { 
-            background-color: var(--rd-teal); 
-            height: 100vh; 
+        html, body {
+            height: 100%;
+            height: 100dvh;
             width: 100vw;
+            overflow: hidden;
+        }
+
+        body { 
+            background-color: var(--rd-pink); 
             display: flex; 
             flex-direction: column;
-            overflow: hidden; 
             touch-action: manipulation;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
 
         #desktop {
-            flex-grow: 1;
+            flex: 1 1 auto;
+            min-height: 0;
             position: relative;
             display: flex;
-            align-items: center;
+            align-items: stretch;
             justify-content: center;
-            padding: 10px;
+            padding: 6px;
         }
 
         .outset { border-top: 1px solid var(--rd-white); border-left: 1px solid var(--rd-white); border-right: 1px solid var(--rd-dark); border-bottom: 1px solid var(--rd-dark); box-shadow: 1px 1px 0px var(--rd-black); }
         .inset { border-top: 1px solid var(--rd-dark); border-left: 1px solid var(--rd-dark); border-right: 1px solid var(--rd-white); border-bottom: 1px solid var(--rd-white); }
 
         #app-window { 
-            width: 98vw; 
-            height: 94vh; 
+            width: 100%; 
+            height: 100%; 
             background-color: var(--rd-gray); 
             display: flex; 
             flex-direction: column; 
             padding: 2px; 
             position: relative; 
             z-index: 10;
-            transition: width 0.2s, height 0.2s, transform 0.3s;
+            min-height: 0;
             max-width: 1400px;
         }
 
-        #app-window.mobile-view { width: 375px; height: 667px; max-height: 90vh; border: 4px solid #333; }
+        #app-window.mobile-view { width: 375px; height: 100%; max-height: 100%; border: 4px solid #333; }
         #app-window.minimized { transform: translateY(120vh) scale(0.1); opacity: 0; pointer-events: none; }
 
-        .title-bar { background: linear-gradient(90deg, var(--rd-blue), #ff5fa2); height: 22px; display: flex; align-items: center; padding: 0 2px; color: white; font-weight: bold; user-select: none; touch-action: none; }
+        .title-bar { background: linear-gradient(90deg, var(--rd-pink), var(--rd-pink-dark)); height: 24px; display: flex; align-items: center; padding: 0 2px; color: white; font-weight: bold; user-select: none; touch-action: none; flex-shrink: 0; }
         .title-bar-text { flex-grow: 1; padding-left: 2px; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .title-controls { display: flex; gap: 2px; padding-right: 1px; flex-shrink: 0; }
 
         .rd-btn-small { 
-            width: 18px; height: 18px; background-color: var(--rd-gray); 
+            width: 20px; height: 20px; background-color: var(--rd-gray); 
             border: 1px solid var(--rd-white); border-right-color: var(--rd-dark); border-bottom-color: var(--rd-dark); 
             display: flex; align-items: center; justify-content: center; color: black; font-size: 11px; cursor: pointer; font-weight: bold;
             touch-action: manipulation;
@@ -79,38 +90,38 @@
         .rd-btn-small:active { border: 1px solid var(--rd-dark); border-right-color: var(--rd-white); border-bottom-color: var(--rd-white); padding: 1px 0 0 1px; }
         .min-bar { width: 7px; height: 2px; background: var(--rd-black); display: block; }
 
-        .menu-bar { display: flex; padding: 1px 0; background: var(--rd-gray); border-bottom: 1px solid var(--rd-dark); position: relative; z-index: 100; flex-wrap: wrap; }
+        .menu-bar { display: flex; padding: 1px 0; background: var(--rd-gray); border-bottom: 1px solid var(--rd-dark); position: relative; z-index: 100; flex-wrap: wrap; flex-shrink: 0; }
         .menu-container { position: relative; }
         .menu-trigger { padding: 4px 10px; cursor: pointer; user-select: none; }
-        .menu-trigger:hover, .menu-trigger.active { background: var(--rd-blue); color: white; }
+        .menu-trigger:hover, .menu-trigger.active { background: var(--rd-pink); color: white; }
         
         .dropdown { position: absolute; top: 100%; left: 0; background: var(--rd-gray); min-width: 180px; display: none; flex-direction: column; box-shadow: 2px 2px 0px rgba(0,0,0,0.5); z-index: 1000; padding: 1px; border: 1px solid var(--rd-white); border-right-color: var(--rd-dark); border-bottom-color: var(--rd-dark); }
         .dropdown-item { padding: 6px 15px; color: black; text-decoration: none; white-space: nowrap; display: flex; justify-content: space-between; gap: 20px; cursor: pointer; touch-action: manipulation; }
-        .dropdown-item:hover { background: var(--rd-blue); color: white; }
+        .dropdown-item:hover { background: var(--rd-pink); color: white; }
         .dropdown-divider { height: 1px; background: var(--rd-dark); margin: 2px 1px; border-bottom: 1px solid var(--rd-white); }
         .shortcut-hint { color: var(--rd-text-gray); font-size: 9px; }
 
-        .main-content { flex-grow: 1; display: flex; overflow: hidden; padding: 4px; gap: 4px; }
-        .sidebar { width: 180px; background: var(--rd-white); display: flex; flex-direction: column; overflow-y: auto; min-width: 120px; }
+        .main-content { flex: 1 1 auto; display: flex; overflow: hidden; padding: 4px; gap: 4px; min-height: 0; }
+        .sidebar { width: 180px; background: var(--rd-white); display: flex; flex-direction: column; overflow-y: auto; min-width: 120px; position: relative; flex-shrink: 0; }
         .sidebar-header { background: var(--rd-gray); padding: 3px 6px; border-bottom: 1px solid var(--rd-dark); font-weight: bold; position: sticky; top: 0; z-index: 5; }
         
-        .tree-container { padding: 4px; white-space: pre; font-family: var(--font-fixed); font-size: 11px; flex-grow: 1; overflow-y: auto; }
-        .tree-line { display: flex; align-items: center; min-height: 22px; cursor: pointer; user-select: none; padding: 2px 4px; border-radius: 2px; }
+        .tree-container { padding: 4px; white-space: pre; font-family: var(--font-fixed); font-size: 11px; flex-grow: 1; overflow-y: auto; min-height: 100%; position: relative; -webkit-overflow-scrolling: touch; }
+        .tree-line { display: flex; align-items: center; min-height: 24px; cursor: pointer; user-select: none; padding: 2px 4px; border-radius: 2px; }
         .tree-line:hover { background-color: #f0f0f0; }
-        .tree-line.active { background-color: var(--rd-blue); color: white; }
+        .tree-line.active { background-color: var(--rd-pink); color: white; }
         .tree-line.rd-name-match { box-shadow: inset 3px 0 0 0 #ff8000; }
         .tree-text { font-family: var(--font-main); margin-left: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tree-folder-toggle { cursor: pointer; margin-right: 4px; font-weight: bold; min-width: 16px; text-align: center; user-select: none; touch-action: manipulation; }
-        .tree-children { padding-left: 16px; }
-        .tree-dragover { background-color: #ffd6ea !important; outline: 2px dashed var(--rd-blue); }
+        .tree-dragover { background-color: #ffd9ec !important; outline: 2px dashed var(--rd-pink); }
+        .tree-root-drop { background-color: #ffe0f0 !important; outline: 2px dashed var(--rd-pink); }
 
         .editor-container { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; background: var(--rd-gray); }
-        .tabs-strip { display: flex; align-items: flex-end; padding-left: 2px; height: 28px; background: var(--rd-gray); border-bottom: 1px solid var(--rd-white); z-index: 2; overflow-x: auto; scrollbar-width: none; }
+        .tabs-strip { display: flex; align-items: flex-end; padding-left: 2px; height: 28px; background: var(--rd-gray); border-bottom: 1px solid var(--rd-white); z-index: 2; overflow-x: auto; scrollbar-width: none; flex-shrink: 0; }
         .tab { position: relative; padding: 5px 12px 3px 12px; margin-right: 2px; background: var(--rd-gray); cursor: pointer; border: 1px solid var(--rd-white); border-right-color: var(--rd-dark); border-bottom: none; box-shadow: 1px 0px 0px var(--rd-black); border-top-left-radius: 2px; border-top-right-radius: 2px; display: flex; align-items: center; gap: 8px; color: #000; z-index: 1; white-space: nowrap; touch-action: manipulation; }
         .tab.active { padding: 6px 14px 5px 14px; margin-bottom: -1px; font-weight: bold; z-index: 3; border-bottom: 1px solid var(--rd-gray); }
         .tab-close { font-size: 10px; color: var(--rd-dark); padding: 2px; cursor: pointer; min-width: 16px; text-align: center; }
 
-        .editor-body { flex-grow: 1; background: var(--rd-white); display: flex; position: relative; border: 1px solid var(--rd-dark); border-right-color: var(--rd-white); border-bottom-color: var(--rd-white); box-shadow: inset 1px 1px 0px var(--rd-black); overflow: hidden; }
+        .editor-body { flex-grow: 1; background: var(--rd-white); display: flex; position: relative; border: 1px solid var(--rd-dark); border-right-color: var(--rd-white); border-bottom-color: var(--rd-white); box-shadow: inset 1px 1px 0px var(--rd-black); overflow: hidden; min-height: 0; }
         
         #line-nums { 
             width: 50px;
@@ -152,22 +163,22 @@
         }
 
         ::-webkit-scrollbar { width: 16px; height: 16px; }
-        ::-webkit-scrollbar-track { background: #dfdfdf; background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAABZJREFUeNpi2r9//38gYGAEESAAEGAAasgP/7p9W6UAAAAASUVORK5CYII="); }
+        ::-webkit-scrollbar-track { background: #dfdfdf; }
         ::-webkit-scrollbar-thumb { background: var(--rd-gray); border: 1px solid var(--rd-white); border-right: 1px solid var(--rd-dark); border-bottom: 1px solid var(--rd-dark); box-shadow: inset 1px 1px 0 var(--rd-white); }
 
-        #taskbar { height: 32px; background: var(--rd-gray); border-top: 2px solid var(--rd-white); display: flex; align-items: center; padding: 2px; gap: 2px; }
-        .start-btn { font-weight: bold; padding: 4px 10px; margin-right: 5px; cursor: pointer; touch-action: manipulation; }
-        .task-item { min-width: 140px; height: 24px; background: var(--rd-gray); border: 1px solid var(--rd-white); border-right-color: var(--rd-dark); border-bottom-color: var(--rd-dark); padding: 0 8px; display: flex; align-items: center; font-weight: bold; cursor: pointer; touch-action: manipulation; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .task-item.active { border: 1px solid var(--rd-dark); border-right-color: var(--rd-white); border-bottom-color: var(--rd-white); background: #e0e0e0; box-shadow: inset 1px 1px 1px var(--rd-black); }
+        #taskbar { height: 34px; background: var(--rd-gray); border-top: 2px solid var(--rd-white); display: flex; align-items: center; padding: 2px; gap: 2px; flex-shrink: 0; }
+        .start-btn { font-weight: bold; padding: 6px 12px; margin-right: 5px; cursor: pointer; touch-action: manipulation; }
+        .task-item { min-width: 140px; height: 26px; background: var(--rd-gray); border: 1px solid var(--rd-white); border-right-color: var(--rd-dark); border-bottom-color: var(--rd-dark); padding: 0 8px; display: flex; align-items: center; font-weight: bold; cursor: pointer; touch-action: manipulation; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .task-item.active { border: 1px solid var(--rd-dark); border-right-color: var(--rd-white); border-bottom-color: var(--rd-white); background: #ffd9ec; box-shadow: inset 1px 1px 1px var(--rd-black); }
 
-        .status-bar { height: 22px; display: flex; gap: 2px; padding: 2px; }
+        .status-bar { height: 24px; display: flex; gap: 2px; padding: 2px; flex-shrink: 0; }
         .status-pane { border: 1px solid var(--rd-dark); border-right-color: var(--rd-white); border-bottom-color: var(--rd-white); padding: 0 8px; display: flex; align-items: center; }
 
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); display: none; align-items: center; justify-content: center; z-index: 9000; }
         .dialog { background: var(--rd-gray); width: 360px; max-width: 92vw; padding: 2px; box-shadow: 2px 2px 10px rgba(0,0,0,0.5); }
         .dialog-body { padding: 15px; }
         .dialog-footer { padding: 10px; display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
-        .btn-action { padding: 6px 15px; background: var(--rd-gray); border: 1px solid var(--rd-white); border-right: 1px solid var(--rd-black); border-bottom: 1px solid var(--rd-black); text-align: center; min-width: 75px; cursor: pointer; touch-action: manipulation; }
+        .btn-action { padding: 8px 16px; background: var(--rd-gray); border: 1px solid var(--rd-white); border-right: 1px solid var(--rd-black); border-bottom: 1px solid var(--rd-black); text-align: center; min-width: 75px; cursor: pointer; touch-action: manipulation; }
         .btn-action:active { border: 1px solid var(--rd-black); border-right-color: var(--rd-white); border-bottom-color: var(--rd-white); }
 
         /* --- TERMINAL --- */
@@ -210,31 +221,41 @@
             font-size: 13px;
             flex-grow: 1;
             margin-left: 4px;
-            caret-color: #33ff33;
+            caret-color: var(--rd-pink);
             touch-action: auto;
         }
-        #terminal-prompt { color: #33ff33; flex-shrink: 0; }
+        #terminal-prompt { color: var(--rd-pink); flex-shrink: 0; }
 
-        .ctx-menu-item { padding: 8px 15px; cursor: pointer; touch-action: manipulation; }
-        .ctx-menu-item:hover { background: var(--rd-blue); color: white; }
+        .ctx-menu-item { padding: 10px 15px; cursor: pointer; touch-action: manipulation; }
+        .ctx-menu-item:hover { background: var(--rd-pink); color: white; }
 
         @media (max-width: 600px) {
-            .sidebar { width: 140px; }
+            .sidebar { width: 130px; min-width: 100px; }
             #line-nums { width: 36px; font-size: 11px; }
             #code-editor { font-size: 12px; }
             .tab { padding: 4px 8px; font-size: 10px; }
-            .menu-trigger { padding: 6px 8px; }
+            .menu-trigger { padding: 6px 7px; font-size: 10px; }
             .dropdown-item { padding: 10px 15px; }
             .btn-action { padding: 10px 20px; }
+            #taskbar { height: 38px; }
+            .task-item { min-width: 100px; height: 28px; }
+            .start-btn { padding: 8px 12px; }
+            .title-bar { height: 26px; }
+            .rd-btn-small { width: 22px; height: 22px; }
+        }
+
+        @media (max-width: 400px) {
+            .sidebar { width: 110px; min-width: 90px; }
+            .menu-trigger { padding: 5px 5px; font-size: 9px; }
         }
     </style>
 </head>
-<body onclick="closeMenus()" oncontextmenu="return false;">
+<body onclick="handleBackgroundClick(event)" oncontextmenu="return false;">
 
     <div id="desktop">
         <div id="app-window" class="outset">
             <div class="title-bar">
-                <div class="title-bar-text">RETRODEV 98 - PROFESSIONAL EDITION</div>
+                <div class="title-bar-text">RETRODEV 98 - PINK</div>
                 <div class="title-controls">
                     <div class="rd-btn-small" onclick="minimizeWindow()"><span class="min-bar"></span></div>
                     <div class="rd-btn-small" onclick="toggleMaximize()">□</div>
@@ -252,11 +273,13 @@
                         <div class="dropdown-item" onclick="promptNewFolder()">New Root Folder...</div>
                         <div class="dropdown-item" onclick="renameCurrent()">Rename... <span class="shortcut-hint">F2</span></div>
                         <div class="dropdown-divider"></div>
+                        <div class="dropdown-item" onclick="deleteCurrentFile()">Delete File</div>
+                        <div class="dropdown-item" onclick="deleteCurrentFolder()">Delete Folder</div>
+                        <div class="dropdown-divider"></div>
                         <div class="dropdown-item" onclick="downloadCurrentFolder()">Download Folder (ZIP)</div>
                         <div class="dropdown-divider"></div>
                         <div class="dropdown-item" onclick="copyText()">Copy All Content <span class="shortcut-hint">Ctrl+C</span></div>
                         <div class="dropdown-item" onclick="saveProject()">Save Project <span class="shortcut-hint">Ctrl+S</span></div>
-                        <div class="dropdown-item" onclick="exportFile()">Export... <span class="shortcut-hint">Ctrl+P</span></div>
                     </div>
                 </div>
                 <div class="menu-container">
@@ -269,6 +292,8 @@
                         <div class="dropdown-item" onclick="selectAllText()">Select All <span class="shortcut-hint">Ctrl+A</span></div>
                         <div class="dropdown-divider"></div>
                         <div class="dropdown-item" onclick="renameCurrent()">Rename... <span class="shortcut-hint">F2</span></div>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-item" onclick="deselectAll()">Deselect</div>
                     </div>
                 </div>
                 <div class="menu-container">
@@ -304,9 +329,9 @@
             </div>
 
             <div class="main-content">
-                <div class="sidebar inset" oncontextmenu="event.stopPropagation(); showContextMenu(event, 'tree')">
-                    <div class="sidebar-header">Folders</div>
-                    <div id="tree-view" class="tree-container"></div>
+                <div class="sidebar inset" id="sidebar" oncontextmenu="event.stopPropagation(); showContextMenu(event, 'tree')">
+                    <div class="sidebar-header">Files</div>
+                    <div id="tree-view" class="tree-container" oncontextmenu="event.stopPropagation(); showContextMenu(event, 'tree')"></div>
                 </div>
                 <div class="editor-container">
                     <div id="tab-strip" class="tabs-strip"></div>
@@ -319,8 +344,8 @@
 
             <div class="status-bar">
                 <div class="status-pane" style="flex-grow:1" id="status-msg">System Ready.</div>
-                <div class="status-pane" id="cursor-info" style="width:140px">Ln 1, Col 1</div>
-                <div class="status-pane" style="width:60px">R98</div>
+                <div class="status-pane" id="cursor-info" style="width:110px">Ln 1, Col 1</div>
+                <div class="status-pane" style="width:50px">R98</div>
             </div>
         </div>
 
@@ -343,16 +368,20 @@
         </div>
     </div>
 
-    <div id="context-menu" class="dropdown outset" style="position:fixed; display:none; z-index:5000; width:190px;">
+    <div id="context-menu" class="dropdown outset" style="position:fixed; display:none; z-index:5000; width:200px;">
         <div id="ctx-tree-opts" style="display:none">
             <div class="ctx-menu-item" onclick="promptNewFile()">New File</div>
             <div class="ctx-menu-item" onclick="promptNewFolder()">New Folder</div>
             <div class="ctx-menu-item" onclick="renameCurrent()">Rename <span class="shortcut-hint">F2</span></div>
-            <div class="ctx-menu-item" onclick="deleteCurrent()">Delete</div>
+            <div class="dropdown-divider"></div>
+            <div class="ctx-menu-item" onclick="deleteCurrentFile()">Delete File</div>
+            <div class="ctx-menu-item" onclick="deleteCurrentFolder()">Delete Folder</div>
             <div class="dropdown-divider"></div>
             <div class="ctx-menu-item" onclick="downloadCurrentFolder()">Download Folder (ZIP)</div>
             <div class="dropdown-divider"></div>
             <div class="ctx-menu-item" onclick="toggleFolderAndRefresh()">Collapse/Expand</div>
+            <div class="dropdown-divider"></div>
+            <div class="ctx-menu-item" onclick="deselectAll()">Deselect</div>
         </div>
         <div id="ctx-editor-opts">
             <div class="ctx-menu-item" onclick="copyText()">Copy <span class="shortcut-hint">Ctrl+C</span></div>
@@ -361,6 +390,8 @@
             <div class="ctx-menu-item" onclick="renameCurrent()">Rename File <span class="shortcut-hint">F2</span></div>
             <div class="dropdown-divider"></div>
             <div class="ctx-menu-item" onclick="downloadCurrentFolder()">Download Folder (ZIP)</div>
+            <div class="dropdown-divider"></div>
+            <div class="ctx-menu-item" onclick="deselectAll()">Deselect</div>
         </div>
     </div>
 
@@ -371,7 +402,7 @@
         <div id="taskbar-term" class="task-item" style="display:none; width:120px;" onclick="openTerminal()">CMD.EXE</div>
     </div>
 
-    <div id="start-menu" class="dropdown outset" style="position:fixed; bottom:38px; left:10px; display:none; z-index:5000; width:220px;">
+    <div id="start-menu" class="dropdown outset" style="position:fixed; bottom:44px; left:10px; display:none; z-index:5000; width:220px;">
         <div class="dropdown-item" onclick="promptNewFile()">New File</div>
         <div class="dropdown-item" onclick="promptNewFolder()">New Folder</div>
         <div class="dropdown-divider"></div>
@@ -413,10 +444,10 @@
             <div class="title-bar"><div class="title-bar-text">About RetroDev 98</div></div>
             <div class="dialog-body">
                 <div style="display:flex; gap:15px;">
-                    <div style="background:var(--rd-blue); color:white; width:40px; height:40px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:24px;">R</div>
+                    <div style="background:var(--rd-pink); color:white; width:40px; height:40px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:24px;">R</div>
                     <div>
-                        <h2 style="font-size:14px">RetroDev 98 Professional</h2>
-                        <p style="font-size:10px; margin-top:10px; line-height:1.4;">The ultimate distraction-free workspace. Purpose-built for text editing and file architecture management. Includes a real Python runtime with pip and numpy preloaded.</p>
+                        <h2 style="font-size:14px">RetroDev 98 Professional (Pink)</h2>
+                        <p style="font-size:10px; margin-top:10px; line-height:1.4;">A retro-styled code editor with a real Python runtime. Includes pip, numpy preloaded, and a command prompt.</p>
                     </div>
                 </div>
             </div>
@@ -461,7 +492,7 @@
                 <div id="run-output-frame-wrap" style="display:none; border:1px solid var(--rd-dark); border-right-color:var(--rd-white); border-bottom-color:var(--rd-white); background:white;">
                     <iframe id="run-output-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-pointer-lock allow-downloads" style="width:100%; height:320px; border:none; display:block;"></iframe>
                 </div>
-                <pre id="run-output-text" style="display:none; background:#000; color:#33ff33; padding:8px; height:280px; overflow:auto; font-family: var(--font-fixed); font-size:12px; white-space:pre-wrap; border:1px solid var(--rd-dark); border-right-color:var(--rd-white); border-bottom-color:var(--rd-white);"></pre>
+                <pre id="run-output-text" style="display:none; background:#000; color:var(--rd-pink); padding:8px; height:280px; overflow:auto; font-family: var(--font-fixed); font-size:12px; white-space:pre-wrap; border:1px solid var(--rd-dark); border-right-color:var(--rd-white); border-bottom-color:var(--rd-white);"></pre>
             </div>
             <div class="dialog-footer">
                 <div class="btn-action" onclick="runActiveFile()">Run Again</div>
@@ -473,477 +504,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
         // --- DATA ---
-        const NEUROCHAT_SOURCE = `#!/usr/bin/env python3
-"""
-NeuroChat - Single-file self-learning CMD AI chatbot.
-Runs inside RetroDev 98's Pyodide CMD. numpy is pre-loaded by the host.
-"""
-
-import os, sys, json, math, random, re, time, pickle, hashlib, textwrap
-from collections import defaultdict, deque
-from difflib import SequenceMatcher
-
-try:
-    import numpy as np
-except ImportError:
-    if sys.platform == "emscripten":
-        import micropip
-        try:
-            await micropip.install("numpy")
-        except Exception:
-            import pyodide_js
-            await pyodide_js.loadPackage("numpy")
-        import numpy as np
-    else:
-        import subprocess
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "numpy", "-q"])
-        import numpy as np
-
-try:
-    import requests
-except ImportError:
-    requests = None
-
-try:
-    _THIS_FILE = os.path.abspath(__file__)
-except NameError:
-    _THIS_FILE = os.path.join(os.getcwd(), "neurochat.py")
-_BRAIN_DIR = os.path.dirname(_THIS_FILE) or os.getcwd()
-
-BRAIN_FILE = os.path.join(_BRAIN_DIR, "neurochat_brain.pkl")
-LLM_API_KEY = os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_API_KEY")
-LLM_BASE = os.environ.get("LLM_BASE_URL", "https://api.openai.com/v1")
-LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-4o-mini")
-
-def norm(s: str) -> str:
-    return re.sub(r"\\s+", " ", re.sub(r"[^\\w\\s']", " ", s.lower())).strip()
-
-def tokens(s: str):
-    return norm(s).split()
-
-def similarity(a: str, b: str) -> float:
-    return SequenceMatcher(None, norm(a), norm(b)).ratio()
-
-class TinyNet:
-    def __init__(self, n_in, n_hidden, n_out, lr=0.05):
-        self.lr = lr
-        self.W1 = np.random.randn(n_in, n_hidden) * 0.1
-        self.b1 = np.zeros(n_hidden)
-        self.W2 = np.random.randn(n_hidden, n_out) * 0.1
-        self.b2 = np.zeros(n_out)
-
-    def forward(self, x):
-        h = np.tanh(x @ self.W1 + self.b1)
-        y = h @ self.W2 + self.b2
-        return h, y
-
-    def softmax(self, y):
-        y = y - np.max(y)
-        e = np.exp(y)
-        return e / (e.sum() + 1e-9)
-
-    def predict(self, x):
-        _, y = self.forward(x)
-        return self.softmax(y)
-
-    def train_step(self, x, target_idx):
-        h, y = self.forward(x)
-        p = self.softmax(y)
-        dy = p.copy(); dy[target_idx] -= 1.0
-        dW2 = np.outer(h, dy); db2 = dy
-        dh = (dy @ self.W2.T) * (1 - h * h)
-        dW1 = np.outer(x, dh); db1 = dh
-        self.W1 -= self.lr * dW1; self.b1 -= self.lr * db1
-        self.W2 -= self.lr * dW2; self.b2 -= self.lr * db2
-        return float(-np.log(p[target_idx] + 1e-9))
-
-    def state(self):
-        return {k: v.tolist() for k, v in self.__dict__.items() if isinstance(v, np.ndarray)}
-
-    def load(self, st):
-        for k, v in st.items():
-            setattr(self, k, np.array(v))
-
-class Brain:
-    def __init__(self):
-        self.vocab = {}
-        self.intents = []
-        self.intent_index = {}
-        self.patterns = defaultdict(list)
-        self.responses = defaultdict(list)
-        self.context = deque(maxlen=12)
-        self.long_term = defaultdict(list)
-        self.history = deque(maxlen=500)
-        self.net = None
-        self.EMB_DIM = 256
-        self.turn_count = 0
-
-    def _ensure_vocab(self, word):
-        if word not in self.vocab:
-            self.vocab[word] = len(self.vocab)
-
-    def vectorize(self, text: str):
-        v = np.zeros(self.EMB_DIM, dtype=np.float32)
-        toks = tokens(text)
-        if not toks: return v
-        for t in toks:
-            self._ensure_vocab(t)
-            h = int(hashlib.md5(t.encode()).hexdigest(), 16)
-            v[h % self.EMB_DIM] += 1.0
-            v[(h >> 8) % self.EMB_DIM] += 0.5
-        for a, b in zip(toks, toks[1:]):
-            h = int(hashlib.md5((a + "_" + b).encode()).hexdigest(), 16)
-            v[h % self.EMB_DIM] += 1.0
-        n = np.linalg.norm(v)
-        return v / n if n > 0 else v
-
-    def add_intent(self, name):
-        if name not in self.intent_index:
-            self.intent_index[name] = len(self.intents)
-            self.intents.append(name)
-            self._rebuild_net()
-
-    def _rebuild_net(self):
-        n_out = max(1, len(self.intents))
-        self.net = TinyNet(self.EMB_DIM, 64, n_out, lr=0.08)
-
-    def ensure_net(self):
-        if self.net is None or self.net.W2.shape[1] != max(1, len(self.intents)):
-            self._rebuild_net()
-
-    def learn(self, user_text, intent, response):
-        self.add_intent(intent)
-        self.ensure_net()
-        self.patterns[intent].append(user_text)
-        if response and response not in self.responses[intent]:
-            self.responses[intent].append(response)
-        x = self.vectorize(user_text)
-        idx = self.intent_index[intent]
-        for _ in range(8):
-            self.net.train_step(x, idx)
-        self.turn_count += 1
-        self.history.append({"u": user_text, "i": intent, "r": response, "t": time.time()})
-
-    def classify(self, text):
-        self.ensure_net()
-        if not self.intents:
-            return None, 0.0
-        x = self.vectorize(text)
-        p = self.net.predict(x)
-        i = int(np.argmax(p))
-        return self.intents[i], float(p[i])
-
-    def best_pattern_match(self, text, threshold=0.55):
-        best, score = None, 0.0
-        for intent, examples in self.patterns.items():
-            for ex in examples[-200:]:
-                s = similarity(text, ex)
-                if s > score:
-                    best, score = intent, s
-        return best, score
-
-    def respond(self, text):
-        intent, score = self.best_pattern_match(text)
-        if intent and score >= 0.75:
-            return self._pick_response(intent), intent, score, "pattern"
-        n_intent, conf = self.classify(text)
-        if n_intent and conf >= 0.45:
-            return self._pick_response(n_intent), n_intent, conf, "neural"
-        if intent and score >= 0.55:
-            return self._pick_response(intent), intent, score, "fuzzy"
-        return None, None, 0.0, "unknown"
-
-    def _pick_response(self, intent):
-        rs = self.responses.get(intent) or ["I'm not sure what to say."]
-        return random.choice(rs)
-
-    def save(self):
-        st = {
-            "vocab": self.vocab, "intents": self.intents,
-            "intent_index": self.intent_index,
-            "patterns": dict(self.patterns),
-            "responses": dict(self.responses),
-            "long_term": dict(self.long_term),
-            "history": list(self.history),
-            "turn_count": self.turn_count,
-            "net": self.net.state() if self.net else None,
-        }
-        try:
-            with open(BRAIN_FILE, "wb") as f:
-                pickle.dump(st, f)
-            return True
-        except Exception as e:
-            print(f"[brain save failed: {e}]")
-            return False
-
-    def load(self):
-        if not os.path.exists(BRAIN_FILE): return False
-        try:
-            with open(BRAIN_FILE, "rb") as f:
-                st = pickle.load(f)
-            self.vocab = st["vocab"]; self.intents = st["intents"]
-            self.intent_index = st["intent_index"]
-            self.patterns = defaultdict(list, st["patterns"])
-            self.responses = defaultdict(list, st["responses"])
-            self.long_term = defaultdict(list, st["long_term"])
-            self.history = deque(st["history"], maxlen=500)
-            self.turn_count = st.get("turn_count", 0)
-            self._rebuild_net()
-            if st.get("net"): self.net.load(st["net"])
-            return True
-        except Exception as e:
-            print(f"[brain load failed: {e}]")
-            return False
-
-def llm_query(prompt: str, context: list):
-    if not (requests and LLM_API_KEY): return None
-    try:
-        msgs = [{"role": "system", "content": "You are NeuroChat, a concise, helpful assistant."}]
-        for u, a in context[-6:]:
-            msgs.append({"role": "user", "content": u})
-            msgs.append({"role": "assistant", "content": a})
-        msgs.append({"role": "user", "content": prompt})
-        r = requests.post(
-            f"{LLM_BASE}/chat/completions",
-            headers={"Authorization": f"Bearer {LLM_API_KEY}"},
-            json={"model": LLM_MODEL, "messages": msgs, "temperature": 0.7},
-            timeout=30,
-        )
-        r.raise_for_status()
-        return r.json()["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        return f"[LLM error: {e}]"
-
-TEACH_HELP = """\\
-Teach me with any of these:
-  /teach <intent> | <example user text> | <my reply>
-  /learn        - interactive intent builder
-  /facts key = value
-  /forget, /save, /load, /stats, /help, /quit
-"""
-
-class NeuroChat:
-    def __init__(self):
-        self.brain = Brain()
-        self.loaded = self.brain.load()
-        self.context = deque(maxlen=6)
-        self.seed_basics()
-
-    def seed_basics(self):
-        if self.brain.intents: return
-        seeds = {
-            "greeting": (["hi", "hello", "hey", "yo", "good morning", "good evening"],
-                         ["Hey there! What's on your mind?",
-                          "Hello! How can I help?",
-                          "Hi! What would you like to talk about?"]),
-            "farewell": (["bye", "goodbye", "see you", "later", "cya"],
-                         ["See you!", "Take care!", "Bye - come back soon."]),
-            "thanks": (["thanks", "thank you", "thx", "appreciate it"],
-                       ["Anytime!", "You're welcome.", "Happy to help."]),
-            "how_are_you": (["how are you", "how's it going", "how do you feel", "what's up"],
-                            ["Running fast and learning faster. You?",
-                             "Good - I get smarter each message. How about you?"]),
-            "identity": (["who are you", "what are you", "your name", "what is your name"],
-                         ["I'm NeuroChat - a self-learning local chatbot.",
-                          "NeuroChat, a tiny neural net that lives in this terminal."]),
-            "capabilities": (["what can you do", "help", "features"],
-                             ["I chat, learn from every message, remember facts, and can call an LLM if configured.",
-                              "Talk to me - I learn patterns, intents, and facts as we go."]),
-            "time": (["what time is it", "current time", "time"], ["__TIME__"]),
-            "date": (["what's the date", "today's date", "what day is it"], ["__DATE__"]),
-            "joke": (["tell me a joke", "make me laugh", "another joke"],
-                     ["Why did the neural net cross the road? To backpropagate to the other side.",
-                      "I told my optimizer a joke - it didn't converge on the punchline."]),
-        }
-        for intent, (exs, resps) in seeds.items():
-            for ex in exs:
-                self.brain.learn(ex, intent, None)
-            for r in resps:
-                self.brain.responses[intent].append(r)
-
-    def render(self, response: str) -> str:
-        if response == "__TIME__": return time.strftime("It's %H:%M:%S.")
-        if response == "__DATE__": return time.strftime("Today is %A, %B %d, %Y.")
-        return response
-
-    def run(self):
-        self.banner()
-        last_user, last_intent, last_reply = None, None, None
-        while True:
-            try:
-                user = input("you> ").strip()
-            except (EOFError, KeyboardInterrupt):
-                print("\\n[bye]"); self.brain.save(); break
-            if not user: continue
-
-            if user.startswith("/"):
-                if self.handle_command(user): continue
-                else: break
-
-            if last_intent and re.match(r"^(no|nope|wrong)[, ]+(say|respond|reply)\\s+(.+)", user, re.I):
-                m = re.match(r"^(no|nope|wrong)[, ]+(say|respond|reply)\\s+(.+)", user, re.I)
-                new_reply = m.group(3)
-                self.brain.responses[last_intent].append(new_reply)
-                self.brain.learn(last_user, last_intent, new_reply)
-                print(f"bot> Got it - I'll say \\"{new_reply}\\" next time.")
-                self.brain.save(); continue
-
-            if last_intent and re.match(r"^(that'?s? (wrong|incorrect)|nope|no)$", user, re.I):
-                try:
-                    new_reply = input("What should I have said? > ").strip()
-                except (EOFError, KeyboardInterrupt): new_reply = ""
-                if new_reply:
-                    self.brain.responses[last_intent].append(new_reply)
-                    self.brain.learn(last_user, last_intent, new_reply)
-                    print("bot> Learned. Thanks!")
-                    self.brain.save()
-                continue
-
-            self.extract_facts(user)
-            t0 = time.time()
-            reply, intent, conf, src = self.brain.respond(user)
-
-            if reply is None:
-                llm = llm_query(user, list(self.context))
-                if llm:
-                    reply = llm
-                    new_intent = f"llm_{self.brain.turn_count}"
-                    self.brain.learn(user, new_intent, reply)
-                    src = "llm"
-                else:
-                    reply = self.default_reply(user)
-                    self.brain.learn(user, "unknown", reply)
-                    src = "fallback"
-            else:
-                reply = self.render(reply)
-
-            dt = (time.time() - t0) * 1000
-            print(f"bot> {reply}")
-            print(f"   [{src} | intent={intent} | conf={conf:.2f} | {dt:.1f}ms | turns={self.brain.turn_count}]")
-
-            self.context.append((user, reply))
-            last_user, last_intent, last_reply = user, intent, reply
-
-            if self.brain.turn_count % 5 == 0:
-                self.brain.save()
-
-    def default_reply(self, user):
-        for k, vals in self.brain.long_term.items():
-            if k in norm(user) and vals:
-                return f"From memory: {k} = {vals[-1]}"
-        q = user.rstrip("?.!")
-        return (f"I don't have a good answer yet for \\"{q}\\". "
-                f"Teach me: /teach <intent> | {q} | <reply>")
-
-    def extract_facts(self, text):
-        m = re.match(r"(?:my name is|i am|i'm|call me)\\s+([A-Za-z][\\w'-]+)", text, re.I)
-        if m: self.brain.long_term["name"].append(m.group(1))
-        m = re.match(r"i (?:like|love)\\s+(.+)", text, re.I)
-        if m: self.brain.long_term["likes"].append(m.group(1).strip())
-        m = re.match(r"i (?:hate|dislike)\\s+(.+)", text, re.I)
-        if m: self.brain.long_term["dislikes"].append(m.group(1).strip())
-        m = re.match(r"(?:remember|note)\\s+(?:that\\s+)?(.+)", text, re.I)
-        if m: self.brain.long_term["notes"].append(m.group(1).strip())
-
-    def handle_command(self, user):
-        parts = user[1:].split(None, 1)
-        cmd = parts[0].lower() if parts else ""
-        arg = parts[1] if len(parts) > 1 else ""
-
-        if cmd in ("quit", "exit", "q"):
-            print("[bye]"); self.brain.save(); return False
-        if cmd == "help": print(TEACH_HELP); return True
-        if cmd == "save":
-            ok = self.brain.save()
-            print(f"[saved to {BRAIN_FILE}]" if ok else "[save failed]"); return True
-        if cmd == "load":
-            ok = self.brain.load(); print("[loaded]" if ok else "[no brain file]"); return True
-        if cmd == "stats":
-            b = self.brain
-            print(f"intents={len(b.intents)} patterns={sum(len(v) for v in b.patterns.values())} "
-                  f"responses={sum(len(v) for v in b.responses.values())} "
-                  f"turns={b.turn_count} vocab={len(b.vocab)} facts={dict(b.long_term)}")
-            return True
-        if cmd == "forget":
-            try:
-                c = input("Erase the brain? (yes/no) > ").strip().lower()
-            except (EOFError, KeyboardInterrupt):
-                c = "no"
-            if c == "yes":
-                try: os.remove(BRAIN_FILE)
-                except FileNotFoundError: pass
-                self.brain = Brain(); self.seed_basics()
-                print("[brain wiped]")
-            return True
-        if cmd == "facts":
-            if "=" in arg:
-                k, v = map(str.strip, arg.split("=", 1))
-                self.brain.long_term[k].append(v)
-                print(f"[fact] {k} = {v}")
-            else:
-                print(dict(self.brain.long_term))
-            return True
-        if cmd == "teach":
-            segs = [s.strip() for s in arg.split("|")]
-            if len(segs) < 2:
-                print("usage: /teach <intent> | <example text> | [optional reply]")
-                return True
-            intent, example = segs[0], segs[1]
-            reply = segs[2] if len(segs) > 2 else None
-            self.brain.learn(example, intent, reply)
-            print(f"[learned] intent='{intent}' example='{example}'")
-            if reply: print(f"[reply] {reply}")
-            return True
-        if cmd == "learn":
-            self.interactive_learn(); return True
-        print(f"unknown command: /{cmd}"); return True
-
-    def interactive_learn(self):
-        print("Interactive learning. Enter blank intent to stop.")
-        while True:
-            try:
-                intent = input("intent name > ").strip()
-            except (EOFError, KeyboardInterrupt):
-                break
-            if not intent: break
-            while True:
-                try:
-                    ex = input("example user text (blank=done) > ").strip()
-                except (EOFError, KeyboardInterrupt):
-                    break
-                if not ex: break
-                try:
-                    rep = input("your reply > ").strip()
-                except (EOFError, KeyboardInterrupt):
-                    rep = ""
-                self.brain.learn(ex, intent, rep or None)
-                if rep: self.brain.responses[intent].append(rep)
-            print(f"[intent '{intent}' stored]")
-        self.brain.save()
-
-    def banner(self):
-        loaded = "loaded from disk" if self.loaded else "fresh brain"
-        llm = "ON" if (LLM_API_KEY and requests) else "off (set OPENAI_API_KEY to enable)"
-        print(textwrap.dedent(f"""
-        ==================================================
-                   NeuroChat - self-learning CMD AI
-        ==================================================
-        brain: {loaded} | turns: {self.brain.turn_count} | LLM fallback: {llm}
-        type /help for commands. Talk normally to train me.
-        """))
-
-if __name__ == "__main__":
-    NeuroChat().run()
-`;
-
-        let appData = JSON.parse(localStorage.getItem('rd98_pro_final_v8')) || {
-            files: [
-                { id: 'f1', name: 'SRC', type: 'folder', parent: null, expanded: true },
-                { id: '1', name: 'MAIN.PY', type: 'file', parent: 'f1', content: 'import numpy as np\nprint("numpy works! version:", np.__version__)\nprint("Try Tools > Command Prompt, then: PIP INSTALL requests")\nprint("Press F2 to rename files. Right-click the tree for Rename.")' },
-                { id: '2', name: 'NEUROCHAT.PY', type: 'file', parent: 'f1', content: NEUROCHAT_SOURCE }
-            ],
-            activeId: '1',
-            tabs: ['1'],
+        let appData = JSON.parse(localStorage.getItem('rd98_pro_final_v9_pink')) || {
+            files: [],
+            activeId: null,
+            tabs: [],
             viewMode: 'desktop',
             findState: { index: -1, lastFind: '' }
         };
@@ -952,15 +516,15 @@ if __name__ == "__main__":
             "Use Ctrl+S to save instantly.",
             "Open Tools > Command Prompt to run real Python with pip.",
             "Press F2 to rename the selected file or folder.",
-            "Right-click a file in the tree to rename, delete, or download as ZIP.",
+            "Right-click (or long-press) a file to delete or download it.",
             "Try: PIP INSTALL requests — then import it in a .py file.",
             "numpy is pre-loaded — 'import numpy' just works.",
             "In the CMD, Ctrl+C cancels the current line or command.",
-            "Check the View menu for Fixedsys font.",
             "Use Ctrl+F to find text.",
-            "Run NEUROCHAT.PY with F5 to chat with a self-learning bot.",
             "Drag and drop files in the tree to move them between folders.",
-            "Long-press (5s) on mobile to open the context menu."
+            "Drag a file onto the empty area below the tree to move it to root.",
+            "Long-press (5s) on mobile to open the context menu.",
+            "Click anywhere outside the tree to deselect."
         ];
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function playClick() {
@@ -1010,7 +574,53 @@ if __name__ == "__main__":
             }
         }
 
-        // --- MOBILE LONG PRESS CONTEXT MENU ---
+        // --- DESELECT ---
+        function deselectAll() {
+            appData.activeId = null;
+            renderTree();
+            renderTabs();
+            editorEl.value = '';
+            editorEl.disabled = true;
+            statusEl.textContent = 'No selection.';
+            taskbarItem.textContent = "RETRODEV 98";
+            updateLineNums();
+            closeMenus();
+        }
+
+        function handleBackgroundClick(e) {
+            const target = e.target;
+            // Close all menus/dropdowns when clicking outside
+            if (!target.closest('.dropdown') && !target.closest('.menu-trigger')) {
+                closeMenus();
+            }
+            // Don't deselect if clicking inside interactive elements
+            if (target.closest('.tree-line') || 
+                target.closest('.dropdown') || 
+                target.closest('.menu-bar') ||
+                target.closest('.modal-overlay') ||
+                target.closest('#taskbar') ||
+                target.closest('#terminal-window') ||
+                target.closest('.rd-btn-small') ||
+                target.closest('.btn-action') ||
+                target.closest('.tab') ||
+                target.closest('.start-btn')) {
+                return;
+            }
+            if (target.closest('#tree-view')) {
+                if (!target.closest('.tree-line')) {
+                    deselectAll();
+                }
+                return;
+            }
+            if (target.closest('#code-editor') || target.closest('.editor-body') || target.closest('.editor-container')) {
+                return;
+            }
+            if (appData.activeId) {
+                deselectAll();
+            }
+        }
+
+        // --- MOBILE LONG PRESS CONTEXT MENU (5 seconds) ---
         let longPressTimer = null;
         let longPressTarget = null;
 
@@ -1019,7 +629,6 @@ if __name__ == "__main__":
             longPressTarget = { x: e.touches ? e.touches[0].clientX : e.clientX, y: e.touches ? e.touches[0].clientY : e.clientY, mode };
             longPressTimer = setTimeout(() => {
                 if (longPressTarget) {
-                    // Simulate context menu
                     const syntheticEvent = {
                         preventDefault: () => {},
                         stopPropagation: () => {},
@@ -1031,7 +640,6 @@ if __name__ == "__main__":
                     };
                     showContextMenu(syntheticEvent, longPressTarget.mode);
                     longPressTarget = null;
-                    // Haptic feedback if available
                     if (navigator.vibrate) navigator.vibrate(20);
                 }
             }, 5000);
@@ -1045,7 +653,6 @@ if __name__ == "__main__":
         }
 
         document.addEventListener('touchstart', (e) => {
-            // Long press on tree sidebar
             if (e.target.closest('.tree-line') || e.target.closest('#tree-view')) {
                 const line = e.target.closest('.tree-line');
                 if (line) {
@@ -1065,7 +672,6 @@ if __name__ == "__main__":
         document.addEventListener('touchmove', clearLongPress);
         document.addEventListener('touchcancel', clearLongPress);
 
-        // Prevent context menu on long press for touch devices
         document.addEventListener('contextmenu', (e) => {
             if (e.target.closest('.tree-line') || e.target.closest('#code-editor')) {
                 e.preventDefault();
@@ -1074,61 +680,24 @@ if __name__ == "__main__":
 
         // --- DRAG AND DROP ---
         let draggedItemId = null;
-        let pendingDragOutUrl = null;
-
-        function getFileMimeType(name) {
-            const ext = (name.split('.').pop() || '').toLowerCase();
-            const map = {
-                py: 'text/x-python',
-                html: 'text/html',
-                htm: 'text/html',
-                css: 'text/css',
-                js: 'text/javascript',
-                json: 'application/json',
-                md: 'text/markdown',
-                csv: 'text/csv',
-                xml: 'application/xml',
-                txt: 'text/plain'
-            };
-            return map[ext] || 'text/plain';
-        }
 
         function makeDraggable(div, item) {
             div.draggable = true;
             div.addEventListener('dragstart', (e) => {
                 draggedItemId = item.id;
-                e.dataTransfer.effectAllowed = 'copyMove';
+                e.dataTransfer.effectAllowed = 'move';
                 e.dataTransfer.setData('text/plain', item.id);
-
-                if (item.type === 'file') {
-                    // Native drag-out-to-desktop: Chromium browsers read the DownloadURL
-                    // entry and save the file to whatever folder the user drops it on
-                    // (File Explorer, Finder, the desktop). Firefox and Safari ignore
-                    // this entry, and touch devices never fire native drag events at all,
-                    // so this path only activates on a desktop Chromium browser with a mouse.
-                    const mime = getFileMimeType(item.name);
-                    const blob = new Blob([item.content || ''], { type: mime });
-                    pendingDragOutUrl = URL.createObjectURL(blob);
-                    e.dataTransfer.setData('DownloadURL', `${mime}:${item.name}:${pendingDragOutUrl}`);
-                }
-
                 div.style.opacity = '0.5';
             });
             div.addEventListener('dragend', (e) => {
                 div.style.opacity = '1';
                 draggedItemId = null;
                 document.querySelectorAll('.tree-line').forEach(el => el.classList.remove('tree-dragover'));
-                if (pendingDragOutUrl) {
-                    const urlToRevoke = pendingDragOutUrl;
-                    pendingDragOutUrl = null;
-                    // The browser reads the blob URL synchronously once the OS drop
-                    // completes, but revoking it inside dragend can race that read on
-                    // slower drives, so free the memory a few seconds later instead.
-                    setTimeout(() => URL.revokeObjectURL(urlToRevoke), 5000);
-                }
+                treeEl.classList.remove('tree-root-drop');
             });
             div.addEventListener('dragover', (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 e.dataTransfer.dropEffect = 'move';
                 if (item.type === 'folder') {
                     div.classList.add('tree-dragover');
@@ -1145,7 +714,6 @@ if __name__ == "__main__":
                 if (!sourceId || sourceId === item.id) return;
                 const source = appData.files.find(f => f.id === sourceId);
                 if (!source) return;
-                // Prevent moving a folder into its own descendant
                 if (source.type === 'folder') {
                     let check = item;
                     while (check) {
@@ -1156,7 +724,6 @@ if __name__ == "__main__":
                         check = appData.files.find(f => f.id === check.parent);
                     }
                 }
-                // Move: set parent to target folder (or null if dropping on root area)
                 const newParent = item.type === 'folder' ? item.id : item.parent;
                 source.parent = newParent;
                 if (item.type === 'folder') item.expanded = true;
@@ -1167,37 +734,44 @@ if __name__ == "__main__":
             });
         }
 
-        // Dropping on the empty space below the last tree item moves that item
-        // back to the root level, closing the one gap the per-item handlers left.
-        treeEl.addEventListener('dragover', (e) => {
-            if (e.target === treeEl) {
+        function setupRootDropZone() {
+            treeEl.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
-                treeEl.classList.add('tree-dragover');
-            }
-        });
-        treeEl.addEventListener('dragleave', (e) => {
-            if (e.target === treeEl) treeEl.classList.remove('tree-dragover');
-        });
-        treeEl.addEventListener('drop', (e) => {
-            if (e.target !== treeEl) return;
-            e.preventDefault();
-            treeEl.classList.remove('tree-dragover');
-            const sourceId = e.dataTransfer.getData('text/plain');
-            if (!sourceId) return;
-            const source = appData.files.find(f => f.id === sourceId);
-            if (!source || source.parent === null) return;
-            source.parent = null;
-            renderTree();
-            saveData(true);
-            statusEl.textContent = `Moved "${source.name}" to root.`;
-            playClick();
-        });
+                if (!e.target.closest('.tree-line')) {
+                    treeEl.classList.add('tree-root-drop');
+                }
+            });
+            treeEl.addEventListener('dragleave', (e) => {
+                if (!e.target.closest('.tree-line')) {
+                    treeEl.classList.remove('tree-root-drop');
+                }
+            });
+            treeEl.addEventListener('drop', (e) => {
+                e.preventDefault();
+                if (e.target.closest('.tree-line')) return;
+                treeEl.classList.remove('tree-root-drop');
+                const sourceId = e.dataTransfer.getData('text/plain');
+                if (!sourceId) return;
+                const source = appData.files.find(f => f.id === sourceId);
+                if (!source) return;
+                if (source.parent === null) {
+                    statusEl.textContent = `"${source.name}" is already in the root.`;
+                    return;
+                }
+                source.parent = null;
+                renderTree();
+                saveData(true);
+                statusEl.textContent = `Moved "${source.name}" to the root.`;
+                playClick();
+            });
+        }
 
         // --- INIT ---
         function init() {
             pushUndo(editorEl.value || '');
             renderTree(); renderTabs(); syncEditor();
+            setupRootDropZone();
             editorEl.addEventListener('input', () => {
                 const item = appData.files.find(f => f.id === appData.activeId);
                 if (item) {
@@ -1243,11 +817,17 @@ if __name__ == "__main__":
                     return;
                 }
 
+                if (e.key === 'Escape') {
+                    if (dialogOpen) { closeModal(); }
+                    else if (appData.activeId) { deselectAll(); }
+                    else { closeMenus(); }
+                    return;
+                }
+
                 if (ctrl) {
                     if (inTextField) return;
                     switch(key) {
                         case 's': e.preventDefault(); saveProject(); break;
-                        case 'p': e.preventDefault(); exportFile(); break;
                         case 'z': e.preventDefault(); undoAction(); break;
                         case 'a': e.preventDefault(); selectAllText(); break;
                         case 'c': e.preventDefault(); copyText(); break;
@@ -1353,62 +933,94 @@ if __name__ == "__main__":
             playClick();
         }
 
+        // --- TREE RENDERING ---
         function renderTree() {
             treeEl.innerHTML = '';
-            function renderLevel(parentId) {
-                const items = appData.files.filter(f => f.parent === parentId);
-                items.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = `tree-line ${appData.activeId === item.id ? 'active' : ''}`;
-                    div.dataset.fileId = item.id;
-                    div.style.paddingLeft = (parentId ? '16px' : '4px');
-
-                    if (item.type === 'folder') {
-                        const toggle = document.createElement('span');
-                        toggle.className = 'tree-folder-toggle';
-                        toggle.textContent = item.expanded !== false ? '−' : '+';
-                        toggle.onclick = (e) => {
-                            e.stopPropagation();
-                            toggleFolder(item.id);
-                            playClick();
-                        };
-                        div.appendChild(toggle);
-                        const icon = document.createElement('span');
-                        icon.textContent = '📁 ';
-                        icon.style.fontSize = '12px';
-                        div.appendChild(icon);
-                        const textSpan = document.createElement('span');
-                        textSpan.className = 'tree-text';
-                        textSpan.textContent = item.name;
-                        div.appendChild(textSpan);
-                        div.onclick = (e) => {
-                            if (e.target !== toggle) {
-                                selectItem(item.id);
-                                playClick();
-                            }
-                        };
-                        makeDraggable(div, item);
-                    } else {
-                        const icon = document.createElement('span');
-                        icon.textContent = '📄 ';
-                        icon.style.fontSize = '12px';
-                        div.appendChild(icon);
-                        const textSpan = document.createElement('span');
-                        textSpan.className = 'tree-text';
-                        textSpan.textContent = item.name;
-                        div.appendChild(textSpan);
-                        div.onclick = (e) => { e.stopPropagation(); selectItem(item.id); playClick(); };
-                        makeDraggable(div, item);
-                    }
-
-                    treeEl.appendChild(div);
-
-                    if (item.type === 'folder' && item.expanded !== false) {
-                        renderLevel(item.id);
-                    }
-                });
+            if (appData.files.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.padding = '8px';
+                empty.style.color = '#888';
+                empty.style.fontStyle = 'italic';
+                empty.textContent = '(empty - create a file)';
+                treeEl.appendChild(empty);
+                return;
             }
-            renderLevel(null);
+            const roots = appData.files.filter(f => f.parent === null);
+            roots.forEach(root => {
+                const line = createTreeLine(root, '');
+                treeEl.appendChild(line);
+                if (root.type === 'folder' && root.expanded !== false) {
+                    const children = appData.files.filter(f => f.parent === root.id);
+                    children.forEach((child, idx, arr) => {
+                        const prefix = idx === arr.length - 1 ? '    \\--- ' : '    |--- ';
+                        const childLine = createTreeLine(child, prefix);
+                        childLine.style.paddingLeft = '16px';
+                        treeEl.appendChild(childLine);
+
+                        if (child.type === 'folder' && child.expanded !== false) {
+                            const grandChildren = appData.files.filter(f => f.parent === child.id);
+                            grandChildren.forEach((gc, gIdx, gArr) => {
+                                const gPrefix = gIdx === gArr.length - 1 ? '        \\--- ' : '        |--- ';
+                                const gLine = createTreeLine(gc, gPrefix);
+                                gLine.style.paddingLeft = '32px';
+                                treeEl.appendChild(gLine);
+                            });
+                        }
+                    });
+                } else if (root.type === 'folder' && root.expanded === false) {
+                    const collapsed = document.createElement('div');
+                    collapsed.style.paddingLeft = '16px';
+                    collapsed.style.color = '#888';
+                    collapsed.style.fontStyle = 'italic';
+                    collapsed.textContent = '    ...';
+                    treeEl.appendChild(collapsed);
+                }
+            });
+        }
+
+        function createTreeLine(item, prefix) {
+            const div = document.createElement('div');
+            div.className = `tree-line ${appData.activeId === item.id ? 'active' : ''}`;
+            div.dataset.fileId = item.id;
+            if (item.type === 'folder') {
+                const toggle = document.createElement('span');
+                toggle.className = 'tree-folder-toggle';
+                toggle.textContent = item.expanded !== false ? '[-]' : '[+]';
+                toggle.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleFolder(item.id);
+                    playClick();
+                };
+                div.appendChild(toggle);
+                const textSpan = document.createElement('span');
+                textSpan.className = 'tree-text';
+                textSpan.textContent = '[' + item.name + ']';
+                div.appendChild(textSpan);
+                div.onclick = (e) => {
+                    if (e.target !== toggle) {
+                        if (appData.activeId === item.id) {
+                            deselectAll();
+                        } else {
+                            selectItem(item.id);
+                        }
+                        playClick();
+                    }
+                };
+                makeDraggable(div, item);
+            } else {
+                div.innerHTML = `<span>${prefix}</span><span class="tree-text">${item.name}</span>`;
+                div.onclick = (e) => { 
+                    e.stopPropagation(); 
+                    if (appData.activeId === item.id) {
+                        deselectAll();
+                    } else {
+                        selectItem(item.id);
+                    }
+                    playClick(); 
+                };
+                makeDraggable(div, item);
+            }
+            return div;
         }
 
         function toggleFolderAndRefresh() {
@@ -1435,7 +1047,7 @@ if __name__ == "__main__":
                 if (!item) return;
                 const div = document.createElement('div');
                 div.className = `tab ${id === appData.activeId ? 'active' : ''}`;
-                div.innerHTML = `${item.name} <span class="tab-close" onclick="closeTab(event, '${id}')">✕</span>`;
+                div.innerHTML = `${item.name} <span class="tab-close" onclick="closeTab(event, '${id}')">X</span>`;
                 div.onclick = () => { selectItem(id); playClick(); };
                 tabEl.appendChild(div);
             });
@@ -1464,13 +1076,86 @@ if __name__ == "__main__":
             } else {
                 editorEl.value = '';
                 editorEl.disabled = true;
-                statusEl.textContent = 'Directory Mode.';
+                statusEl.textContent = appData.activeId ? 'Directory Mode.' : 'No selection.';
+                updateLineNums();
             }
         }
 
         function saveData(silent = false) {
-            localStorage.setItem('rd98_pro_final_v8', JSON.stringify(appData));
+            localStorage.setItem('rd98_pro_final_v9_pink', JSON.stringify(appData));
             if(!silent) { statusEl.textContent = "Workspace persistent."; playClick(); }
+        }
+
+        // --- DELETE FILE / FOLDER ---
+        function deleteCurrentFile() {
+            const item = appData.files.find(f => f.id === appData.activeId);
+            if (!item) {
+                statusEl.textContent = "Nothing selected.";
+                return;
+            }
+            if (item.type !== 'file') {
+                statusEl.textContent = "Selected item is not a file. Use 'Delete Folder' instead.";
+                closeMenus();
+                return;
+            }
+            const label = `"${item.name}"`;
+            showConfirm("Delete File", `Are you sure you want to delete ${label}? This cannot be undone.`, () => {
+                appData.files = appData.files.filter(f => f.id !== item.id);
+                appData.tabs = appData.tabs.filter(t => t !== item.id);
+                if (appData.activeId === item.id) {
+                    appData.activeId = appData.tabs[0] || (appData.files[0] ? appData.files[0].id : null);
+                }
+                renderTree(); renderTabs(); syncEditor(); saveData();
+                statusEl.textContent = `Deleted file ${label}.`;
+                playClick();
+            });
+            closeMenus();
+        }
+
+        function deleteCurrentFolder() {
+            const item = appData.files.find(f => f.id === appData.activeId);
+            if (!item) {
+                statusEl.textContent = "Nothing selected.";
+                return;
+            }
+            if (item.type !== 'folder') {
+                statusEl.textContent = "Selected item is not a folder. Use 'Delete File' instead.";
+                closeMenus();
+                return;
+            }
+            const idsToDelete = collectIdsToDelete(item.id);
+            const childCount = idsToDelete.length - 1;
+            const label = `the folder "${item.name}"${childCount > 0 ? ` and its ${childCount} item(s)` : ''}`;
+            showConfirm("Delete Folder", `Are you sure you want to delete ${label}? This cannot be undone.`, () => {
+                appData.files = appData.files.filter(f => !idsToDelete.includes(f.id));
+                appData.tabs = appData.tabs.filter(t => !idsToDelete.includes(t));
+                if (idsToDelete.includes(appData.activeId)) {
+                    appData.activeId = appData.tabs[0] || (appData.files[0] ? appData.files[0].id : null);
+                }
+                renderTree(); renderTabs(); syncEditor(); saveData();
+                statusEl.textContent = `Deleted folder ${label}.`;
+                playClick();
+            });
+            closeMenus();
+        }
+
+        function collectIdsToDelete(id) {
+            const ids = [id];
+            const item = appData.files.find(f => f.id === id);
+            if (item && item.type === 'folder') {
+                appData.files.filter(f => f.parent === id).forEach(child => {
+                    ids.push(...collectIdsToDelete(child.id));
+                });
+            }
+            return ids;
+        }
+
+        // Generic delete (used by keyboard Delete key)
+        function deleteCurrent() {
+            const item = appData.files.find(f => f.id === appData.activeId);
+            if (!item) return;
+            if (item.type === 'file') deleteCurrentFile();
+            else deleteCurrentFolder();
         }
 
         // --- DOWNLOAD FOLDER AS ZIP ---
@@ -1480,7 +1165,6 @@ if __name__ == "__main__":
                 statusEl.textContent = "Select a folder or file first.";
                 return;
             }
-            // Determine the folder to download
             let folderId = null;
             if (item.type === 'folder') {
                 folderId = item.id;
@@ -1495,10 +1179,8 @@ if __name__ == "__main__":
             if (!folder) return;
 
             const zip = new JSZip();
-            const folderPath = getFolderPath(folderId);
             const rootFolder = zip.folder(folder.name);
 
-            // Recursively add files
             function addFiles(parentId, currentFolder) {
                 const items = appData.files.filter(f => f.parent === parentId);
                 items.forEach(f => {
@@ -1523,6 +1205,7 @@ if __name__ == "__main__":
             }).catch((err) => {
                 statusEl.textContent = "Error creating ZIP: " + err.message;
             });
+            closeMenus();
         }
 
         // --- SAVE PROJECT (WHOLE WORKSPACE) ---
@@ -1714,8 +1397,8 @@ if __name__ == "__main__":
             ctxMenu.style.display = 'block';
             const pageX = e.pageX || e.clientX || 100;
             const pageY = e.pageY || e.clientY || 100;
-            ctxMenu.style.left = Math.min(pageX, window.innerWidth - 200) + 'px';
-            ctxMenu.style.top = Math.min(pageY, window.innerHeight - 200) + 'px';
+            ctxMenu.style.left = Math.min(pageX, window.innerWidth - 220) + 'px';
+            ctxMenu.style.top = Math.min(pageY, window.innerHeight - 250) + 'px';
             document.getElementById('ctx-tree-opts').style.display = mode === 'tree' ? 'block' : 'none';
             document.getElementById('ctx-editor-opts').style.display = mode === 'editor' ? 'block' : 'none';
             clearLongPress();
@@ -1746,6 +1429,7 @@ if __name__ == "__main__":
                 selectItem(id);
                 saveData();
             });
+            closeMenus();
         }
 
         function promptNewFolder() {
@@ -1762,6 +1446,7 @@ if __name__ == "__main__":
                 renderTree();
                 saveData();
             });
+            closeMenus();
         }
 
         // --- RENAME ---
@@ -1797,50 +1482,6 @@ if __name__ == "__main__":
                     playClick();
                 }
             );
-        }
-
-        function collectIdsToDelete(id) {
-            const ids = [id];
-            const item = appData.files.find(f => f.id === id);
-            if (item && item.type === 'folder') {
-                appData.files.filter(f => f.parent === id).forEach(child => {
-                    ids.push(...collectIdsToDelete(child.id));
-                });
-            }
-            return ids;
-        }
-
-        function deleteCurrent() {
-            const item = appData.files.find(f => f.id === appData.activeId);
-            if (!item) return;
-            const idsToDelete = collectIdsToDelete(item.id);
-            const childCount = idsToDelete.length - 1;
-            const label = item.type === 'folder'
-                ? `the folder "${item.name}"${childCount > 0 ? ` and its ${childCount} item(s)` : ''}`
-                : `"${item.name}"`;
-            showConfirm("Confirm Delete", `Are you sure you want to delete ${label}? This cannot be undone.`, () => {
-                appData.files = appData.files.filter(f => !idsToDelete.includes(f.id));
-                appData.tabs = appData.tabs.filter(t => !idsToDelete.includes(t));
-                if (idsToDelete.includes(appData.activeId)) {
-                    appData.activeId = appData.tabs[0] || (appData.files[0] ? appData.files[0].id : null);
-                }
-                renderTree(); renderTabs(); syncEditor(); saveData();
-                statusEl.textContent = `Deleted ${label}.`;
-                playClick();
-            });
-        }
-
-        function exportFile() {
-            const item = appData.files.find(f => f.id === appData.activeId);
-            if (!item || item.type !== 'file') return;
-            const b = new Blob([item.content], {type: getFileMimeType(item.name)});
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(b);
-            a.download = item.name;
-            a.click();
-            URL.revokeObjectURL(a.href);
-            statusEl.textContent = "Exported " + item.name;
-            playClick();
         }
 
         // --- RUN ENGINE ---
@@ -2206,8 +1847,8 @@ except Exception:
             const out = document.getElementById('terminal-output');
             const div = document.createElement('div');
             if (cls === 'err') div.style.color = '#ff5555';
-            else if (cls === 'ok') div.style.color = '#33ff33';
-            else if (cls === 'info') div.style.color = '#00aaff';
+            else if (cls === 'ok') div.style.color = 'var(--rd-pink)';
+            else if (cls === 'info') div.style.color = '#ffaadd';
             else if (cls === 'dim') div.style.color = '#808080';
             else if (cls === 'warn') div.style.color = '#ffcc00';
             div.textContent = text;
@@ -2234,8 +1875,6 @@ except Exception:
                 termPrint('Type PIP INSTALL <package> to install real Python packages.', 'info');
                 termPrint('numpy is preloaded. Try: PY -c "import numpy; print(numpy.__version__)"', 'dim');
                 termPrint('Press Ctrl+C to cancel the current line or running command.', 'dim');
-                termPrint('');
-                termPrint('Python runtime boots on first PY / PIP command...', 'dim');
                 termPrint('');
             }
 
@@ -2370,10 +2009,6 @@ except Exception:
                         termPrint('  REN <old> <new>   Rename a file in the workspace');
                         termPrint('  VER               Show version');
                         termPrint('  EXIT              Close this window');
-                        termPrint('');
-                        termPrint('numpy is preloaded. Try: PY -c "import numpy; print(numpy.__version__)"', 'dim');
-                        termPrint('PIP installs REAL pure-Python wheels from PyPI via micropip.', 'dim');
-                        termPrint('Ctrl+C cancels the current line or aborts a running command.', 'dim');
                         termPrint('');
                         return;
 
@@ -2564,14 +2199,6 @@ exec(compile(_src, _os.path.abspath(_src_path), 'exec'), _g)
                 termPrint('  PIP FREEZE                      Show installed with versions');
                 termPrint('  PIP SHOW <pkg>                  Show package info');
                 termPrint('');
-                termPrint('Examples:', 'dim');
-                termPrint('  PIP INSTALL requests', 'dim');
-                termPrint('  PIP INSTALL cowsay', 'dim');
-                termPrint('  PIP INSTALL snowballstemmer', 'dim');
-                termPrint('');
-                termPrint('NOTE: micropip installs pure-Python wheels from PyPI.', 'dim');
-                termPrint('For Pyodide-distributed packages like numpy, use PY -c "import numpy".', 'dim');
-                termPrint('');
                 return;
             }
 
@@ -2698,9 +2325,6 @@ _results = await _do_install(lambda: __import__('js').window.__termAbortFlag)
                             } else {
                                 anyErr = true;
                                 termPrint('Failed to install ' + pkg + ': ' + msg, 'err');
-                                if (/pure|wheel|extension|not.*found|No matching|No such/i.test(msg)) {
-                                    termPrint('  (This may be a C-extension package without a Pyodide wheel.)', 'dim');
-                                }
                             }
                         }
                     }
